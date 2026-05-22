@@ -1,0 +1,211 @@
+Jesteś seniorem full‑stack i architektem systemów AI. Masz rozbudować istniejący projekt do pełnej aplikacji „AI Tutor / korepetytor ai ”.
+Użyj naszego stacku
+Tailwind CSS na UI
+Prisma + PostgreSQL (+ rozszerzenie pgvector do embeddingów)
+NextAuth (lub inna prosta auth z email/password)
+API Routes / Route Handlers jako warstwa HTTP (REST – prosto, czytelnie)
+osobne „serwisy” domenowe i „adaptery” integracyjne
+klient HeyGen (AvatarAdapter) do klipów wideo (MVP) + przygotowana struktura pod Streaming Avatar (na później)
+klient do LLM (LlmAdapter) i embeddings (EmbeddingAdapter)
+zorganizować strukturę katalogów,
+zdefiniować modele w Prisma,
+napisać szkielety najważniejszych serwisów i adapterów,
+zrobić API endpoints,
+przygotować podstawowe ekrany na froncie (bez „upiększania”, ale z działającym flow).
+1. Struktura katalogów projektu
+Utwórz spójną strukturę (możesz modyfikować, jeśli uznasz, że lepiej):
+app/
+page.tsx – istniejący landing, zostaw
+auth/ – logowanie/rejestracja
+dashboard/ – dashboard użytkownika (ucznia)
+dashboard/books/[bookId]/ – widok konkretnej książki: graf + czat
+admin/ – prosty panel admina
+api/
+auth/[...nextauth]/route.ts
+books/route.ts – POST (upload książki), GET (lista)
+books/[bookId]/graph/route.ts – GET (graf), POST (regeneracja grafu)
+chat/route.ts – POST (wiadomość od użytkownika → odpowiedź tutora)
+avatar/clip/route.ts – POST (wygeneruj klip do istniejącej wiadomości)
+
+
+src/ lub lib/ (w zależności od konwencji):
+server/
+services/
+BookIngestionService.ts
+BookChunkingService.ts
+EmbeddingService.ts
+GraphBuilderService.ts
+KnowledgeQueryService.ts
+TutoringService.ts
+AvatarService.ts
+
+adapters/
+OcrAdapter.ts (interfejs) + MathpixOcrAdapter.ts (pusta implementacja z TODO)
+EmbeddingAdapter.ts + OpenAIEmbeddingAdapter.ts
+LlmAdapter.ts + OpenAILlmAdapter.ts
+AvatarAdapter.ts + HeyGenAvatarAdapter.ts (MVP: klipy asynchroniczne)
+
+repositories/
+BookRepository.ts
+BookPageRepository.ts
+BookChunkRepository.ts
+EmbeddingRepository.ts
+GraphNodeRepository.ts
+GraphEdgeRepository.ts
+ChatSessionRepository.ts
+ChatMessageRepository.ts
+
+
+components/
+UploadBookForm.tsx
+KnowledgeGraph.tsx – wizualizacja grafu (np. react-force-graph-2d)
+ChatPanel.tsx – czat z tutorem
+AvatarPlayer.tsx – player dla klipu wideo z HeyGen
+LayoutDashboard.tsx – layout dla dashboardu
+
+
+2. Modele danych (Prisma + Postgres)
+Zbuduj plik prisma/schema.prisma z modelami:
+User – standard (id, email, name, role: STUDENT | ADMIN)
+Book – id, userId, title, status: UPLOADED | PROCESSING | PROCESSED | FAILED, createdAt, updatedAt
+BookPage – id, bookId, pageNumber, rawText, ocrMeta
+BookChunk – id, bookId, pageId, type: TASK | THEORY | EXAMPLE | OTHER, content, position, createdAt
+Embedding – id, chunkId, vector (pgvector), provider
+GraphNode – id, bookId, chunkId?, type: CONCEPT | TASK | SECTION, label
+GraphEdge – id, bookId, sourceId, targetId, type: SIMILAR | DEPENDS_ON | NEXT | PART_OF, weight
+ChatSession – id, userId, bookId, createdAt, endedAt?
+ChatMessage – id, sessionId, role: USER | ASSISTANT, content, createdAt, avatarVideoUrl?
+Dodaj relacje, indeksy i typ Vector dla embeddingów (pgvector).
+3. Serwisy domenowe – szkielety i logika
+Zaimplementuj w TypeScript klasowe serwisy (zależności przez konstruktor – dependency injection). Każdy serwis ma tylko logikę domenową, bez szczegółów HTTP.
+BookIngestionService
+createBook(userId, fileMeta) → tworzy rekord Book ze statusem UPLOADED.
+processBook(bookId, filePath) → woła OcrAdapter (na razie TODO) i zapisuje BookPage; potem wywołuje BookChunkingService i EmbeddingService, ustawia status PROCESSED.
+
+BookChunkingService
+Heurystycznie dzieli BookPage.rawText na BookChunk (wykrywa nagłówki „Zadanie”, „Przykład”, itp.).
+
+EmbeddingService
+Batchuje BookChunk i woła EmbeddingAdapter.embed(texts), zapisuje wektory w Embedding.
+
+GraphBuilderService
+Na podstawie BookChunk + Embedding tworzy GraphNode i GraphEdge.
+Używa prostej logiki:
+tworzy węzły dla wszystkich chunków,
+liczy podobieństwa wektorowe i dodaje krawędzie SIMILAR powyżej progu,
+dodaje strukturalne krawędzie NEXT (kolejne strony/chunki) i PART_OF (sekcja → zadania).
+
+
+KnowledgeQueryService
+getContextForQuestion(bookId, question, selectedNodeId?)
+jeśli jest selectedNodeId, bierze węzeł + sąsiadów i ich chunk.
+robi wektorowe wyszukiwanie na Embedding po pytaniu (RAG).
+łączy, deduplikuje i zwraca listę fragmentów jako kontekst.
+
+
+TutoringService
+startSession(userId, bookId)
+handleUserMessage(sessionId, message, selectedNodeId?)
+pobiera historię sesji,
+korzysta z KnowledgeQueryService,
+buduje prompt (rola: nauczyciel, nie podawaj od razu odpowiedzi, zadawaj pytania pośrednie),
+woła LlmAdapter.complete(prompt),
+zapisuje ChatMessage (USER, potem ASSISTANT) i zwraca odpowiedź.
+
+
+AvatarService
+generateClipForMessage(chatMessageId)
+pobiera ChatMessage tutora,
+woła AvatarAdapter.createClip({ text, avatarId }),
+zapisuje avatarVideoUrl w ChatMessage.
+
+
+W serwisach nie używaj bezpośrednio Prisma – korzystaj z repozytoriów.
+4. Adaptery integracyjne (warstwa integracyjna)
+Zdefiniuj interfejsy i proste implementacje (z TODO tam, gdzie trzeba klucze API):
+OcrAdapter
+extractPages(filePath): Promise<{ pageNumber: number; text: string }[]>
+zaimplementuj klasę MathpixOcrAdapter z pustymi wywołaniami (tylko struktura).
+
+EmbeddingAdapter
+embed(texts: string[]): Promise<number[][]>
+klasa OpenAIEmbeddingAdapter – pokaż, jak użyć OpenAI embeddings (bez klucza).
+
+LlmAdapter
+complete(prompt: LlmPrompt): Promise<LlmResponse>
+klasa OpenAILlmAdapter – przykład użycia Chat Completions.
+
+AvatarAdapter
+createClip(params: { text: string; avatarId: string }): Promise<{ videoUrl: string; taskId: string }>
+klasa HeyGenAvatarAdapter – użyj schematu z dokumentacji HeyGen LiveAvatar API (POST do endpointu tworzącego wideo, polling statusu, zwrócenie videoUrl).
+dodaj komentarze z informacją, gdzie wstawić HEYGEN_API_KEY.
+
+Adaptery nie powinny znać modeli Prisma – tylko prosty tekst/parametry.
+5. API routes – połączenie front ↔ backend
+Zaimplementuj następujące Route Handlers (bez nadmiernego skomplikowania, ale w pełni działające):
+POST /api/books
+przyjmuje multipart/form-data z plikiem PDF lub obrazami.
+tworzy Book (BookIngestionService.createBook), zapisuje plik (np. do uploads/ lub tymczasowo),
+uruchamia w tle (na razie await – później do przeniesienia do job queue) processBook,
+zwraca bookId.
+
+GET /api/books
+zwraca książki zalogowanego użytkownika.
+
+GET /api/books/[bookId]/graph
+zwraca węzły i krawędzie grafu jako JSON (lista nodes, edges).
+
+POST /api/chat
+body: { sessionId?, bookId, message, selectedNodeId? }
+jeśli brak sessionId, tworzy nową sesję przez TutoringService.startSession.
+woła TutoringService.handleUserMessage,
+zwraca { sessionId, assistantMessage, mainNodeId, avatarVideoUrl? }.
+
+POST /api/avatar/clip
+body: { chatMessageId }
+woła AvatarService.generateClipForMessage,
+zwraca videoUrl.
+
+Do walidacji wejścia użyj zod.
+6. Frontend – ekrany i komponenty
+Przygotuj minimalne, ale działające UI (Tailwind):
+app/auth/* – logowanie/rejestracja (NextAuth z credentials, proste formularze).
+app/dashboard/page.tsx
+lista książek użytkownika,
+przycisk „Dodaj książkę” z komponentem UploadBookForm.
+
+UploadBookForm.tsx
+formularz input type="file",
+wysyłka pliku na /api/books,
+pokazanie statusu (loading, success, error).
+
+app/dashboard/books/[bookId]/page.tsx
+layout z dwoma panelami:
+lewy: KnowledgeGraph (graf z książki),
+prawy: ChatPanel (czat z tutorem).
+
+
+KnowledgeGraph.tsx
+użyj np. react-force-graph-2d do wyświetlenia nodes/edges;
+po kliknięciu w node wywołuje callback onSelectNode(nodeId).
+
+ChatPanel.tsx
+lista wiadomości,
+pole input,
+wywołuje /api/chat,
+jeśli w odpowiedzi jest avatarVideoUrl, przekazuje do AvatarPlayer.
+
+AvatarPlayer.tsx
+prosty <video controls src={videoUrl} />.
+
+app/admin/page.tsx
+lista użytkowników, ich liczba książek, liczba sesji – na razie dane z prostych zapytań Prisma.
+
+Komponenty mają być w pełni typowane, z prostym error handlingiem (toast/alert).
+7. Dobre praktyki i komentarze
+Użyj .env dla: DATABASE_URL, OPENAI_API_KEY, HEYGEN_API_KEY.
+Dodaj README.md z krótką instrukcją uruchomienia (migrations, seed, env).
+W serwisach i adapterach dodaj krótkie komentarze, co powinno być dopracowane w kolejnych iteracjach (np. przeniesienie OCR i generacji grafu do background jobs).
+Pisz kod tak, aby dało się go łatwo testować jednostkowo – logika w serwisach, side‑effects w adapterach i API routes.
+Przestrzegaj zasad programowania DRY,KISS, YAGMI i dobrego kodowania
+Na koniec wygeneruj wszystkie pliki kodu i zadbaj, by tworzyły spójny projekt, który da się uruchomić (npm install, npx prisma migrate dev, npm run dev).
