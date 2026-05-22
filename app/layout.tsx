@@ -1,21 +1,28 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Bree_Serif, Nunito } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 
-const inter = Inter({
-  variable: "--font-inter",
+const nunito = Nunito({
+  variable: "--font-nunito",
   subsets: ["latin", "latin-ext"],
+  weight: ["400", "600", "700", "800"],
+});
+
+const bree = Bree_Serif({
+  variable: "--font-display",
+  subsets: ["latin", "latin-ext"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
-  title: "TutorAI - Twój osobisty AI tutor edukacyjny | Naucz się mądrzej",
+  title: "TutorAI - Twój osobisty AI korepetytor | Naucz się mądrzej",
   description:
-    "Personalizowane ścieżki nauki, AI wsparcie i graf wiedzy. Zacznij bezpłatnie bez karty kredytowej.",
+    "AI korepetytorzy, nagrania, quizy i graf wiedzy. Wrzuć materiał, a TutorAI przygotuje plan nauki.",
   keywords: ["AI tutor", "nauka", "edukacja", "graf wiedzy", "TutorAI"],
   openGraph: {
-    title: "TutorAI - Twój osobisty AI tutor",
-    description: "Personalizowane ścieżki nauki z AI i grafem wiedzy.",
+    title: "TutorAI - Twój osobisty AI korepetytor",
+    description: "Personalizowane ścieżki nauki z AI, nagraniami i grafem wiedzy.",
     type: "website",
     locale: "pl_PL",
   },
@@ -27,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pl" className={`${inter.variable} antialiased`}>
+    <html lang="pl" className={`${nunito.variable} ${bree.variable} antialiased`}>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>

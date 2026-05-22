@@ -1,104 +1,156 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { Shield, Users, BookOpen, MessageCircle } from 'lucide-react';
-import DashboardLayout from '@/src/components/DashboardLayout';
+import { useEffect, useState } from 'react'
+import { BookOpen, MessageCircle, Shield, Sparkles, Users } from 'lucide-react'
+import DashboardLayout from '@/src/components/DashboardLayout'
+import { readJsonSafely } from '@/src/lib/http/json'
 
-interface User {
-  id: string;
-  email: string;
-  role: string;
-  createdAt: string;
-  _count: { books: number; chatSessions: number };
+interface AdminUser {
+  id: string
+  email: string
+  role: string
+  createdAt: string
+  _count: { books: number; chatSessions: number }
 }
 
 export default function AdminPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/admin/users')
-      .then((r) => r.json())
-      .then((data) => {
-        setUsers(data.users || []);
-        setLoading(false);
-      });
-  }, []);
+    let cancelled = false
+
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/admin/users')
+        const data = await readJsonSafely<{ users?: AdminUser[] }>(res)
+        if (!cancelled) setUsers(data?.users || [])
+      } catch {
+        if (!cancelled) setUsers([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    void loadUsers()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const stats = [
-    { label: 'Użytkownicy', value: users.length, icon: Users },
-    { label: 'Książki', value: users.reduce((a, u) => a + (u._count?.books || 0), 0), icon: BookOpen },
-    { label: 'Sesje', value: users.reduce((a, u) => a + (u._count?.chatSessions || 0), 0), icon: MessageCircle },
-  ];
+    { label: 'Użytkownicy', value: users.length, icon: Users, color: 'bg-[#7057ff]' },
+    {
+      label: 'Materiały',
+      value: users.reduce((sum, user) => sum + (user._count?.books || 0), 0),
+      icon: BookOpen,
+      color: 'bg-[#ff5144]',
+    },
+    {
+      label: 'Sesje czatu',
+      value: users.reduce((sum, user) => sum + (user._count?.chatSessions || 0), 0),
+      icon: MessageCircle,
+      color: 'bg-[#20b981]',
+    },
+  ]
 
   return (
     <DashboardLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#1a1a1a] flex items-center gap-2">
-          <Shield className="w-6 h-6 text-[#1d7874]" />
-          Panel administratora
-        </h1>
-        <p className="text-sm text-[#666] mt-1">Zarządzanie użytkownikami i zasobami.</p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-white rounded-xl border border-[#e5f0ee] p-5 flex items-center gap-4 shadow-sm">
-              <div className="bg-[#1d7874] text-white p-3 rounded-lg">
-                <Icon className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-[#1a1a1a]">{s.value}</p>
-                <p className="text-sm text-[#666]">{s.label}</p>
-              </div>
+      <section className="cartoon-panel overflow-hidden rounded-[32px]">
+        <div className="grid gap-6 p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#f6dec0] bg-[#fff4cf] px-4 py-2 text-sm font-extrabold text-[#06296b]">
+              <Sparkles className="h-4 w-4 text-[#ff5144]" fill="#ff5144" />
+              Centrum kontroli
             </div>
-          );
-        })}
-      </div>
-
-      <div className="bg-white rounded-xl border border-[#e5f0ee] shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#e5f0ee]">
-          <h2 className="font-semibold text-[#1a1a1a]">Użytkownicy</h2>
+            <h1 className="flex flex-wrap items-center gap-3 font-display text-5xl leading-none text-[#06296b] md:text-6xl">
+              <Shield className="h-10 w-10 text-[#7057ff]" strokeWidth={2.7} />
+              Panel admina
+            </h1>
+            <p className="mt-4 max-w-2xl text-base font-bold leading-7 text-[#6e7fa6]">
+              Sprawdzaj użytkowników, aktywność materiałów i sesje czatu bez wychodzenia z
+              kreskówkowego świata TutorAI.
+            </p>
+          </div>
         </div>
+      </section>
+
+      <section className="mt-5 grid gap-4 md:grid-cols-3">
+        {stats.map((stat) => {
+          const Icon = stat.icon
+          return (
+            <article key={stat.label} className="cartoon-panel rounded-[28px] p-5">
+              <div className="flex items-center gap-4">
+                <span className={`flex h-14 w-14 items-center justify-center rounded-2xl text-white ${stat.color}`}>
+                  <Icon className="h-7 w-7" strokeWidth={2.7} />
+                </span>
+                <div>
+                  <p className="font-display text-4xl leading-none text-[#06296b]">{stat.value}</p>
+                  <p className="text-sm font-extrabold text-[#6e7fa6]">{stat.label}</p>
+                </div>
+              </div>
+            </article>
+          )
+        })}
+      </section>
+
+      <section className="cartoon-panel mt-7 overflow-hidden rounded-[32px]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e6edf7] px-6 py-5">
+          <div>
+            <h2 className="font-display text-4xl leading-none text-[#06296b]">Użytkownicy</h2>
+            <p className="mt-2 text-sm font-bold text-[#6e7fa6]">
+              Role, liczba materiałów i sesje czatu w jednym widoku.
+            </p>
+          </div>
+          <span className="rounded-full bg-[#f0edff] px-4 py-2 text-sm font-extrabold text-[#7057ff]">
+            {users.length} kont
+          </span>
+        </div>
+
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1d7874]" />
+          <div className="flex items-center justify-center py-20">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#dce7f5] border-b-[#7057ff]" />
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[#f6faf9]">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-[#fff4cf]">
                 <tr>
-                  <th className="px-6 py-3 font-medium text-[#666]">Email</th>
-                  <th className="px-6 py-3 font-medium text-[#666]">Rola</th>
-                  <th className="px-6 py-3 font-medium text-[#666]">Książki</th>
-                  <th className="px-6 py-3 font-medium text-[#666]">Sesje</th>
-                  <th className="px-6 py-3 font-medium text-[#666]">Utworzony</th>
+                  <th className="px-6 py-4 font-extrabold text-[#06296b]">Email</th>
+                  <th className="px-6 py-4 font-extrabold text-[#06296b]">Rola</th>
+                  <th className="px-6 py-4 font-extrabold text-[#06296b]">Materiały</th>
+                  <th className="px-6 py-4 font-extrabold text-[#06296b]">Sesje</th>
+                  <th className="px-6 py-4 font-extrabold text-[#06296b]">Utworzony</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e5f0ee]">
-                {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-[#f6faf9] transition-colors">
-                    <td className="px-6 py-3 text-[#1a1a1a]">{u.email}</td>
-                    <td className="px-6 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                        u.role === 'ADMIN' ? 'bg-[#1d7874]/10 text-[#1d7874]' : 'bg-[#f0f7f6] text-[#666]'
-                      }`}>
-                        {u.role}
+              <tbody className="divide-y divide-[#e6edf7] bg-[#fffefb]">
+                {users.map((user) => (
+                  <tr key={user.id} className="transition-colors hover:bg-[#f9fbff]">
+                    <td className="px-6 py-4 font-bold text-[#06296b]">{user.email}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1.5 text-xs font-extrabold ${
+                          user.role === 'ADMIN'
+                            ? 'bg-[#f0edff] text-[#7057ff]'
+                            : 'bg-[#eafff4] text-[#11805e]'
+                        }`}
+                      >
+                        {user.role}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-[#666]">{u._count.books}</td>
-                    <td className="px-6 py-3 text-[#666]">{u._count.chatSessions}</td>
-                    <td className="px-6 py-3 text-[#999]">{u.createdAt.split('T')[0]}</td>
+                    <td className="px-6 py-4 font-bold text-[#6e7fa6]">{user._count.books}</td>
+                    <td className="px-6 py-4 font-bold text-[#6e7fa6]">{user._count.chatSessions}</td>
+                    <td className="px-6 py-4 font-bold text-[#9aa8c1]">
+                      {new Date(user.createdAt).toLocaleDateString('pl-PL')}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </section>
     </DashboardLayout>
-  );
+  )
 }

@@ -1,64 +1,45 @@
-"use client";
-
-import { useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
-
-gsap.registerPlugin(ScrollTrigger);
+import Image from "next/image";
+import { ArrowRight, ClipboardList } from "lucide-react";
 
 export default function CTASection() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  useGSAP(
-    () => {
-      if (!sectionRef.current || !contentRef.current) return;
-
-      gsap.fromTo(
-        contentRef.current,
-        { opacity: 0, y: 50, scale: 0.95 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.8,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top 75%",
-            toggleActions: "play none none none",
-          },
-        }
-      );
-    },
-    { scope: sectionRef }
-  );
-
   return (
-    <section
-      ref={sectionRef}
-      id="cta"
-      className="py-20 px-4 bg-gradient-to-r from-[#1d7874]/10 via-white to-[#2ba599]/10"
-    >
-      <div
-        ref={contentRef}
-        className="max-w-4xl mx-auto text-center"
-      >
-        <h2 className="text-3xl md:text-4xl font-bold text-[#1a1a1a]">
-          Gotów na zmianę w sposobie uczenia się?
-        </h2>
-        <p className="mt-4 text-lg text-[#666666] max-w-2xl mx-auto">
-          Zaraz Ci pokażemy, jak TutorAI zmienił naukę dla tysięcy uczniów.
-          Bez zobowiązań, bez karty kredytowej.
-        </p>
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <a href="/auth/register" className="bg-[#1d7874] text-white px-8 py-3 rounded-lg font-medium transition-transform hover:scale-105 cursor-pointer inline-flex items-center justify-center">
-            Rozpocznij bezpłatnie
-          </a>
-          <a href="/dashboard" className="border border-[#1d7874] text-[#1d7874] px-8 py-3 rounded-lg font-medium transition-colors hover:bg-[#f0fffe] cursor-pointer inline-flex items-center justify-center">
-            Przejdź do aplikacji
-          </a>
+    <section id="cennik" className="px-4 py-12">
+      <div className="cartoon-panel mx-auto grid max-w-5xl overflow-hidden rounded-[32px] md:grid-cols-[0.95fr_1.05fr]">
+        <div className="flex flex-col justify-center px-7 py-10 md:px-12">
+          <h2 className="font-display text-4xl leading-none text-[#ff5144] md:text-6xl">
+            Uczmy się razem!
+          </h2>
+          <p className="mt-4 text-lg font-extrabold leading-8 text-[#7a8bad]">
+            Dołącz do społeczności uczniów i odkryj, jak przyjemna może być
+            nauka z AI korepetytorem.
+          </p>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="/auth/register"
+              className="cartoon-button inline-flex items-center justify-center gap-3 rounded-xl bg-[#6ff0ae] px-6 py-4 font-extrabold text-[#063f40]"
+            >
+              Zacznij za darmo
+              <ArrowRight className="h-4 w-4" strokeWidth={3} />
+            </a>
+            <a
+              href="#jak-to-dziala"
+              className="inline-flex items-center justify-center gap-3 rounded-xl border border-[#dce7f5] bg-white px-6 py-4 font-extrabold text-[#06296b]"
+            >
+              Zobacz plan
+              <ClipboardList className="h-4 w-4" strokeWidth={2.7} />
+            </a>
+          </div>
+        </div>
+
+        <div className="relative min-h-[230px] bg-[#fff8df]">
+          <Image
+            src="/assets/tutorai-cta-illustration.png"
+            alt="Cartoon ilustracja robota AI uczącego się z uczennicą"
+            fill
+            loading="eager"
+            sizes="(min-width: 768px) 42vw, 92vw"
+            className="object-cover object-center"
+          />
         </div>
       </div>
     </section>

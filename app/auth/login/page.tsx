@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Sparkles, Mail, Lock, Loader2, ArrowRight } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowRight, GraduationCap, Loader2, Lock, Mail, Sparkles } from 'lucide-react'
 import { createClient } from '@/src/lib/supabase/client'
 
 export default function LoginPage() {
@@ -20,7 +21,7 @@ export default function LoginPage() {
     setLoading(true)
 
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim().toLowerCase(),
       password,
     })
 
@@ -35,72 +36,97 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6faf9] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <span className="text-2xl font-bold text-[#1a1a1a]">TutorAI</span>
-          <Sparkles className="w-6 h-6 text-[#2ba599]" />
-        </div>
-
-        <div className="bg-white rounded-2xl border border-[#e5f0ee] p-8 shadow-sm">
-          <h1 className="text-xl font-bold text-[#1a1a1a] mb-1">Zaloguj się</h1>
-          <p className="text-sm text-[#666] mb-6">Witaj z powrotem! Kontynuuj naukę.</p>
-
-          {error && (
-            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                <input
-                  type="email"
-                  placeholder="twoj@email.pl"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#d0e5e1] bg-[#fafcfb] text-sm focus:outline-none focus:ring-2 focus:ring-[#1d7874]/20 focus:border-[#1d7874] transition-all"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1a1a1a] mb-1">Hasło</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[#d0e5e1] bg-[#fafcfb] text-sm focus:outline-none focus:ring-2 focus:ring-[#1d7874]/20 focus:border-[#1d7874] transition-all"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 bg-[#1d7874] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#166a66] disabled:opacity-50 transition-colors"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-              Zaloguj się
-            </button>
-          </form>
-
-          <p className="mt-6 text-sm text-center text-[#666]">
-            Nie masz konta?{' '}
-            <Link href="/auth/register" className="font-medium text-[#1d7874] hover:underline">
-              Zarejestruj się
+    <main className="min-h-screen px-4 py-6">
+      <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-6xl items-center">
+        <div className="cartoon-panel grid w-full overflow-hidden rounded-[32px] lg:grid-cols-[0.92fr_1.08fr]">
+          <section className="flex flex-col justify-center px-6 py-10 md:px-12">
+            <Link href="/" className="mb-8 flex w-fit items-center gap-2 text-[#06296b]">
+              <span className="font-display text-3xl">TutorAI</span>
+              <GraduationCap className="h-6 w-6 text-[#20b981]" />
             </Link>
-          </p>
+
+            <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-[#f6dec0] bg-[#fff4cf] px-4 py-2 text-sm font-extrabold text-[#06296b]">
+              <Sparkles className="h-4 w-4 text-[#ff5144]" fill="#ff5144" />
+              Witaj z powrotem
+            </div>
+
+            <h1 className="font-display text-5xl leading-none text-[#06296b] md:text-6xl">
+              Kontynuuj swoją naukę
+            </h1>
+            <p className="mt-4 max-w-md text-base font-bold leading-7 text-[#6e7fa6]">
+              Zaloguj się i wróć do planów, quizów, nagrań oraz grafu wiedzy.
+            </p>
+
+            {error && (
+              <div className="mt-6 rounded-2xl border border-[#ffd3cf] bg-[#fff0ef] px-4 py-3 text-sm font-bold text-[#d8342b]">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="mt-7 grid gap-4">
+              <label className="grid gap-2 text-sm font-extrabold text-[#06296b]">
+                Email
+                <span className="relative">
+                  <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7057ff]" />
+                  <input
+                    type="email"
+                    placeholder="twoj@email.pl"
+                    className="w-full rounded-2xl border border-[#dce7f5] bg-white py-4 pl-12 pr-4 text-sm font-bold text-[#06296b] outline-none placeholder:text-[#a5b1ca] focus:border-[#7057ff]"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </span>
+              </label>
+
+              <label className="grid gap-2 text-sm font-extrabold text-[#06296b]">
+                Hasło
+                <span className="relative">
+                  <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#7057ff]" />
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    className="w-full rounded-2xl border border-[#dce7f5] bg-white py-4 pl-12 pr-4 text-sm font-bold text-[#06296b] outline-none placeholder:text-[#a5b1ca] focus:border-[#7057ff]"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="cartoon-button inline-flex items-center justify-center gap-3 rounded-2xl bg-[#ff5144] px-5 py-4 font-extrabold text-white transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+                Zaloguj się
+              </button>
+            </form>
+
+            <p className="mt-6 text-center text-sm font-bold text-[#6e7fa6]">
+              Nie masz konta?{' '}
+              <Link href="/auth/register" className="font-extrabold text-[#11805e] hover:underline">
+                Zarejestruj się
+              </Link>
+            </p>
+          </section>
+
+          <section className="relative hidden min-h-[650px] overflow-hidden bg-[#fff4cf] lg:block">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(111,240,174,0.42),transparent_16rem),radial-gradient(circle_at_84%_80%,rgba(112,87,255,0.22),transparent_18rem)]" />
+            <div className="relative flex h-full items-center justify-center p-12">
+              <Image
+                src="/assets/tutorai-hero-tutor-collage.png"
+                alt="AI korepetytorzy TutorAI"
+                width={420}
+                height={640}
+                priority
+                className="max-h-[560px] w-auto object-contain drop-shadow-2xl"
+              />
+            </div>
+          </section>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

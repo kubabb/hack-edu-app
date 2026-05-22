@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, GraduationCap, Menu, X } from "lucide-react";
 
 const navLinks = [
   { label: "Funkcje", href: "#funkcje" },
   { label: "Jak to działa", href: "#jak-to-dziala" },
-  { label: "Dla kogo", href: "#dla-kogo" },
+  { label: "Nagrania", href: "#nagrania" },
   { label: "Cennik", href: "#cennik" },
 ];
 
@@ -16,166 +15,115 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 12);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <>
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 h-[70px] backdrop-blur-xl border-b transition-colors duration-300 ${
-          scrolled
-            ? "bg-white/95 border-black/5 shadow-lg shadow-black/5"
-            : "bg-white/10 border-white/20"
-        }`}
-      >
-        <div className="relative z-10 mx-auto max-w-7xl h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          {/* Logo */}
-          <motion.a
-            href="#"
-            className="flex items-center gap-1.5"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <span
-              className={`text-[20px] font-bold transition-colors duration-300 ${
-                scrolled ? "text-[#1a1a1a]" : "text-white"
-              }`}
-            >
-              TutorAI
-            </span>
-            <Sparkles className="w-4 h-4 text-[#2ba599]" />
-          </motion.a>
+      <nav className="fixed inset-x-0 top-0 z-50 px-4 py-4">
+        <div
+          className={`cartoon-panel mx-auto flex h-16 max-w-7xl items-center justify-between rounded-[24px] px-4 transition-all duration-300 md:px-7 ${
+            scrolled ? "shadow-[0_18px_45px_rgba(6,41,107,0.12)]" : ""
+          }`}
+        >
+          <a href="#" className="flex items-center gap-2 text-[#06296b]">
+            <span className="font-display text-3xl leading-none">TutorAI</span>
+            <GraduationCap className="h-6 w-6 text-[#20b981]" strokeWidth={2.4} />
+          </a>
 
-          {/* Desktop Links */}
-          <motion.div
-            className="hidden md:flex items-center gap-8"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            {navLinks.map((link) => (
+          <div className="hidden items-center rounded-[20px] border border-[#dce7f5] bg-white px-2 py-1.5 shadow-[inset_0_-2px_rgba(6,41,107,0.04)] md:flex">
+            {navLinks.map((link, index) => (
               <a
                 key={link.href}
                 href={link.href}
-                className={`relative text-[14px] font-semibold transition-colors group ${
-                  scrolled
-                    ? "text-[#1a1a1a] hover:text-[#2ba599]"
-                    : "text-white hover:text-[#2ba599]"
+                className={`rounded-2xl px-4 py-2 text-sm font-extrabold transition-colors ${
+                  index === 0
+                    ? "bg-[#7057ff] text-white shadow-[inset_0_-3px_rgba(6,41,107,0.16)]"
+                    : "text-[#06296b] hover:bg-[#f3f6ff]"
                 }`}
               >
                 {link.label}
-                <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-[#2ba599] transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
-          </motion.div>
+          </div>
 
-          {/* Desktop Right */}
-          <motion.div
-            className="hidden md:flex items-center gap-6"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
+          <div className="hidden items-center gap-3 md:flex">
             <a
               href="/auth/login"
-              className={`text-[14px] font-semibold transition-colors ${
-                scrolled
-                  ? "text-[#1a1a1a] hover:text-[#2ba599]"
-                  : "text-white hover:text-[#2ba599]"
-              }`}
+              className="rounded-xl border border-[#dce7f5] bg-white px-5 py-3 text-sm font-extrabold text-[#06296b] shadow-[inset_0_-3px_rgba(6,41,107,0.07)] transition-transform hover:-translate-y-0.5"
             >
-              Zaloguj się
+              Login
             </a>
             <a
               href="/auth/register"
-              className="inline-flex items-center justify-center bg-[#1d7874] text-white text-[14px] font-semibold px-6 py-2.5 rounded-lg hover:scale-105 transition-transform shadow-[0_0_15px_rgba(29,120,116,0.4)]"
+              className="cartoon-button inline-flex items-center gap-2 rounded-xl border border-[#42d996] bg-[#6ff0ae] px-5 py-3 text-sm font-extrabold text-[#063f40] transition-transform hover:-translate-y-0.5"
             >
               Zacznij naukę
+              <ArrowRight className="h-4 w-4" strokeWidth={3} />
             </a>
-          </motion.div>
+          </div>
 
-          {/* Mobile Hamburger */}
           <button
-            className={`md:hidden p-2 transition-colors duration-300 ${
-              scrolled ? "text-[#1a1a1a]" : "text-white"
-            }`}
+            type="button"
+            className="rounded-xl border border-[#dce7f5] bg-white p-3 text-[#06296b] md:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Otwórz menu"
           >
-            <Menu className="w-6 h-6" />
+            <Menu className="h-5 w-5" />
           </button>
         </div>
       </nav>
 
-      {/* Mobile Overlay */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            className="fixed inset-0 z-[60] flex flex-col bg-white/98 backdrop-blur-xl"
-            initial={{ opacity: 0, x: "100%" }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: "100%" }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="relative z-10 flex items-center justify-between h-[70px] px-4 sm:px-6">
-              <a href="#" className="flex items-center gap-1.5">
-                <span className="text-[20px] font-bold text-[#1a1a1a]">
-                  TutorAI
-                </span>
-                <Sparkles className="w-4 h-4 text-[#2ba599]" />
+      {mobileOpen && (
+        <div className="fixed inset-0 z-[60] bg-[#f6f4ef] p-4 md:hidden">
+          <div className="cartoon-panel flex min-h-full flex-col rounded-[28px] p-5">
+            <div className="flex items-center justify-between">
+              <a href="#" className="flex items-center gap-2 text-[#06296b]">
+                <span className="font-display text-3xl">TutorAI</span>
+                <GraduationCap className="h-6 w-6 text-[#20b981]" />
               </a>
               <button
-                className="p-2 text-[#1a1a1a]"
+                type="button"
+                className="rounded-xl border border-[#dce7f5] bg-white p-3 text-[#06296b]"
                 onClick={() => setMobileOpen(false)}
                 aria-label="Zamknij menu"
               >
-                <X className="w-6 h-6" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="relative z-10 flex flex-col items-center justify-center flex-1 gap-8 px-6">
-              {navLinks.map((link, i) => (
-                <motion.a
+            <div className="mt-12 flex flex-1 flex-col gap-4">
+              {navLinks.map((link) => (
+                <a
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="text-xl font-semibold text-[#1a1a1a] hover:text-[#2ba599] transition-colors"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.08 }}
+                  className="rounded-2xl bg-white px-5 py-4 text-xl font-extrabold text-[#06296b]"
                 >
                   {link.label}
-                </motion.a>
+                </a>
               ))}
-
-              <motion.div
-                className="flex flex-col items-center gap-4 mt-4 w-full max-w-xs"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-              >
+              <div className="mt-auto grid gap-3">
                 <a
                   href="/auth/login"
-                  className="text-base font-semibold text-[#1a1a1a] hover:text-[#2ba599] transition-colors"
+                  className="rounded-2xl border border-[#dce7f5] bg-white px-5 py-4 text-center font-extrabold text-[#06296b]"
                 >
-                  Zaloguj się
+                  Login
                 </a>
                 <a
                   href="/auth/register"
-                  className="w-full inline-flex items-center justify-center bg-[#1d7874] text-white text-base font-semibold px-6 py-3 rounded-lg hover:scale-105 transition-transform shadow-[0_0_15px_rgba(29,120,116,0.4)]"
+                  className="cartoon-button rounded-2xl bg-[#6ff0ae] px-5 py-4 text-center font-extrabold text-[#063f40]"
                 >
                   Zacznij naukę
                 </a>
-              </motion.div>
+              </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </>
   );
 }

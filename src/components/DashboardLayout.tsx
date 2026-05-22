@@ -1,19 +1,33 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, LayoutDashboard as DashboardIcon, LogOut, Sparkles, Shield } from 'lucide-react'
+import {
+  BookOpen,
+  GraduationCap,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Shield,
+  Sparkles,
+} from 'lucide-react'
 import { useUser } from '@/src/hooks/useUser'
 import { createClient } from '@/src/lib/supabase/client'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-  { href: '/dashboard/books', label: 'Moje książki', icon: BookOpen },
+  { href: '/dashboard', label: 'Pulpit', icon: LayoutDashboard },
+  { href: '/dashboard/books', label: 'Materiały', icon: BookOpen },
 ]
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { user } = useUser()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const isAdmin = user?.role === 'ADMIN'
 
   async function handleLogout() {
@@ -23,31 +37,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-[#f6faf9] flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-[#e5f0ee] fixed h-full z-20 hidden md:flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-[#e5f0ee]">
+    <div className="min-h-screen bg-[#f6f4ef] text-[#06296b]">
+      <aside className="fixed inset-y-4 left-4 z-30 hidden w-72 flex-col overflow-hidden rounded-[28px] border border-[#dfe8f4] bg-[#fffefb] shadow-[0_18px_50px_rgba(6,41,107,0.1)] lg:flex">
+        <div className="border-b border-[#e6edf7] px-6 py-6">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-[#1a1a1a]">TutorAI</span>
-            <Sparkles className="w-5 h-5 text-[#2ba599]" />
+            <span className="font-display text-3xl text-[#06296b]">TutorAI</span>
+            <GraduationCap className="h-6 w-6 text-[#20b981]" />
           </Link>
+          <div className="mt-5 rounded-2xl bg-[#fff4cf] p-4">
+            <p className="text-xs font-extrabold uppercase text-[#ff5144]">Aktywna sesja</p>
+            <p className="mt-1 truncate text-sm font-extrabold text-[#06296b]">
+              {user?.name || user?.email || 'Uczeń TutorAI'}
+            </p>
+          </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 space-y-2 px-4 py-5">
           {navItems.map((item) => {
             const Icon = item.icon
-            const active = pathname === item.href || pathname.startsWith(item.href + '/')
+            const active = isActive(pathname, item.href)
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold transition-transform hover:-translate-y-0.5 ${
                   active
-                    ? 'bg-[#1d7874]/10 text-[#1d7874]'
-                    : 'text-[#666] hover:bg-[#f0f7f6] hover:text-[#1a1a1a]'
+                    ? 'bg-[#7057ff] text-white shadow-[inset_0_-3px_rgba(6,41,107,0.16)]'
+                    : 'bg-white text-[#6e7fa6] hover:text-[#06296b]'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="h-5 w-5" strokeWidth={2.7} />
                 {item.label}
               </Link>
             )
@@ -56,39 +75,94 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {isAdmin && (
             <Link
               href="/admin"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#666] hover:bg-[#f0f7f6] hover:text-[#1a1a1a] transition-colors"
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-extrabold transition-transform hover:-translate-y-0.5 ${
+                isActive(pathname, '/admin')
+                  ? 'bg-[#7057ff] text-white'
+                  : 'bg-white text-[#6e7fa6] hover:text-[#06296b]'
+              }`}
             >
-              <Shield className="w-5 h-5" />
+              <Shield className="h-5 w-5" strokeWidth={2.7} />
               Panel admina
             </Link>
           )}
         </nav>
 
-        <div className="p-3 border-t border-[#e5f0ee]">
+        <div className="border-t border-[#e6edf7] p-4">
           <button
+            type="button"
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#666] hover:bg-red-50 hover:text-red-600 transition-colors w-full"
+            className="flex w-full items-center gap-3 rounded-2xl bg-[#fff0ef] px-4 py-3 text-sm font-extrabold text-[#d8342b] transition-transform hover:-translate-y-0.5"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="h-5 w-5" strokeWidth={2.7} />
             Wyloguj się
           </button>
         </div>
       </aside>
 
-      {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-[#e5f0ee] z-20 flex items-center justify-between px-4">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-lg font-bold text-[#1a1a1a]">TutorAI</span>
-          <Sparkles className="w-4 h-4 text-[#2ba599]" />
-        </Link>
-        <button onClick={handleLogout} className="text-sm text-[#666]">
-          Wyloguj
-        </button>
-      </div>
+      <header className="sticky top-0 z-20 border-b border-[#dfe8f4] bg-[#f6f4ef]/85 px-4 py-3 backdrop-blur lg:hidden">
+        <div className="cartoon-panel flex items-center justify-between rounded-2xl px-4 py-3">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <span className="font-display text-2xl text-[#06296b]">TutorAI</span>
+            <GraduationCap className="h-5 w-5 text-[#20b981]" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl bg-[#fff0ef] px-3 py-2 text-xs font-extrabold text-[#d8342b]"
+            >
+              Wyloguj
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileOpen((open) => !open)}
+              aria-expanded={mobileOpen}
+              aria-label="Otwórz menu"
+              className="rounded-xl border border-[#dce7f5] bg-white p-2 text-[#06296b]"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        {mobileOpen && (
+          <nav className="cartoon-panel mt-3 grid gap-2 rounded-2xl p-3">
+            {[...navItems, ...(isAdmin ? [{ href: '/admin', label: 'Panel admina', icon: Shield }] : [])].map(
+              (item) => {
+                const Icon = item.icon
+                const active = isActive(pathname, item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-extrabold ${
+                      active ? 'bg-[#7057ff] text-white' : 'bg-white text-[#6e7fa6]'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" strokeWidth={2.7} />
+                    {item.label}
+                  </Link>
+                )
+              },
+            )}
+          </nav>
+        )}
+      </header>
 
-      {/* Main content */}
-      <main className="flex-1 md:ml-64 pt-14 md:pt-0">
-        <div className="max-w-6xl mx-auto p-6 md:p-8">
+      <main className="px-4 py-6 lg:ml-80 lg:px-8 lg:py-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#f6dec0] bg-[#fff4cf] px-4 py-2 text-sm font-extrabold text-[#06296b]">
+              <Sparkles className="h-4 w-4 text-[#ff5144]" fill="#ff5144" />
+              Panel nauki TutorAI
+            </div>
+            <Link
+              href="/"
+              className="rounded-xl border border-[#dce7f5] bg-white px-4 py-2 text-sm font-extrabold text-[#06296b]"
+            >
+              Landing page
+            </Link>
+          </div>
           {children}
         </div>
       </main>

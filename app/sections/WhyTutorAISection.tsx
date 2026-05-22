@@ -1,197 +1,151 @@
-"use client";
+import Image from "next/image";
+import { ArrowLeft, ArrowRight, Play, Star } from "lucide-react";
 
-import { useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
-import { Zap, TrendingUp, Globe } from "lucide-react";
-
-gsap.registerPlugin(ScrollTrigger);
-
-const stats = [
+const studentCards = [
   {
-    icon: Zap,
-    label: "szybciej",
-    prefix: "",
-    suffix: "x ",
-    target: 3,
-    description:
-      "Uczniowie korzystający z TutorAI osiągają wyniki trzy razy szybciej dzięki personalizacji.",
+    name: "Kasia, 2 kl. LO",
+    quote: "W końcu rozumiem matematykę. Wyjaśnienia AI są proste i trafiają w punkt.",
+    color: "#fff6db",
   },
   {
-    icon: TrendingUp,
-    label: "%",
-    prefix: "+",
-    suffix: "",
-    target: 45,
-    description:
-      "Średni wzrost efektywności nauki w ciągu pierwszego miesiąca korzystania z platformy.",
+    name: "Bartek, 3 kl. LO",
+    quote: "Nagrania korepetytorów są mega pomocne przed sprawdzianami.",
+    color: "#eafff4",
   },
   {
-    icon: Globe,
-    label: "/7",
-    prefix: "",
-    suffix: "",
-    target: 24,
-    description:
-      "Dostępność całodobowa — ucz się wtedy, kiedy chcesz, bez ograniczeń czasowych.",
+    name: "Zosia, technikum",
+    quote: "Plan nauki naprawdę działa. Widzę postępy każdego tygodnia.",
+    color: "#fff0ef",
+  },
+  {
+    name: "Marek, 8 kl. SP",
+    quote: "Graf wiedzy pomaga połączyć tematy i mniej wkuwać na pamięć.",
+    color: "#f1efff",
   },
 ];
 
-const avatarColors = ["#1d7874", "#2ba599", "#f5a623", "#e74c3c", "#8e44ad"];
+const playlist = [
+  "Wzór ogólny i delta",
+  "Przykłady krok po kroku",
+  "Postać iloczynowa",
+  "Zadania maturalne",
+];
 
 export default function WhyTutorAISection() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const subRef = useRef<HTMLParagraphElement>(null);
-  const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const socialRef = useRef<HTMLDivElement>(null);
-
-  useGSAP(
-    () => {
-      if (!sectionRef.current) return;
-
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top 75%",
-          end: "top 25%",
-          scrub: false,
-          toggleActions: "play none none none",
-        },
-      });
-
-      tl.fromTo(
-        headingRef.current,
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }
-      )
-        .fromTo(
-          subRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" },
-          "-=0.4"
-        )
-        .fromTo(
-          cardsRef.current.filter(Boolean),
-          { opacity: 0, y: 40 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.6,
-            stagger: 0.15,
-            ease: "power2.out",
-          },
-          "-=0.3"
-        )
-        .fromTo(
-          socialRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" },
-          "-=0.3"
-        );
-
-      // Count-up numbers
-      cardsRef.current.forEach((card, i) => {
-        if (!card) return;
-        const stat = stats[i];
-        const numEl = card.querySelector(".count-num") as HTMLElement | null;
-        if (!numEl) return;
-
-        const obj = { val: 0 };
-        gsap.to(obj, {
-          val: stat.target,
-          duration: 1.5,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: card,
-            start: "top 80%",
-            toggleActions: "play none none none",
-          },
-          onUpdate: () => {
-            numEl.textContent =
-              stat.prefix + Math.round(obj.val) + stat.suffix;
-          },
-        });
-      });
-    },
-    { scope: sectionRef }
-  );
-
   return (
-    <section
-      ref={sectionRef}
-      id="dlaczego-tutorai"
-      className="bg-[#f5f5f5] py-20 px-4 md:px-16"
-    >
-      <div className="max-w-6xl mx-auto">
-        <h2
-          ref={headingRef}
-          className="text-center text-3xl md:text-4xl font-bold text-[#1a1a1a]"
-        >
-          Dlaczego TutorAI?
-        </h2>
-        <p
-          ref={subRef}
-          className="text-center text-[#666] mt-4 max-w-2xl mx-auto"
-        >
-          Dołącz do tysięcy uczniów, którzy uczą się mądrzej z TutorAI
-        </p>
+    <section id="funkcje" className="px-4 py-10">
+      <div className="mx-auto max-w-7xl">
+        <div className="cartoon-panel rounded-[32px] px-5 py-9 md:px-10">
+          <h2 className="text-center font-display text-4xl leading-none text-[#06296b] md:text-6xl">
+            Ufa nam nowe pokolenie uczniów
+          </h2>
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-          {stats.map((stat, i) => {
-            const Icon = stat.icon;
-            return (
-              <div
-                key={stat.label}
-                ref={(el) => { cardsRef.current[i] = el; }}
-                className="bg-white rounded-2xl p-8 shadow-sm border border-[#e5e5e5] text-center transition-transform hover:scale-[1.03]"
+          <div className="mt-8 grid gap-4 md:grid-cols-4">
+            {studentCards.map((card) => (
+              <article
+                key={card.name}
+                className="rounded-[24px] border border-[#e4eaf4] p-5"
+                style={{ backgroundColor: card.color }}
               >
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#1d7874]/10">
-                  <Icon size={24} className="text-[#1d7874]" />
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
+                    🎓
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-[#06296b]">{card.name}</h3>
+                    <div className="mt-1 flex text-[#ffb300]">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <Star key={index} className="h-3.5 w-3.5 fill-current" />
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-4xl font-bold text-[#1d7874]">
-                  <span className="count-num">
-                    {stat.prefix}0{stat.suffix}
-                  </span>
-                  {stat.label}
-                </div>
-                <p className="mt-3 text-sm text-[#666] leading-relaxed">
-                  {stat.description}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Social Proof */}
-        <div
-          ref={socialRef}
-          className="mt-12 flex flex-col items-center text-center"
-        >
-          <div className="flex -space-x-3">
-            {avatarColors.map((color, idx) => (
-              <div
-                key={idx}
-                className="h-10 w-10 rounded-full border-2 border-white"
-                style={{ backgroundColor: color }}
-                aria-hidden="true"
-              />
+                <p className="text-sm font-bold leading-6 text-[#536994]">“{card.quote}”</p>
+              </article>
             ))}
           </div>
 
-          <div className="mt-3 flex items-center gap-2 text-[#1a1a1a] font-semibold">
-            <span>⭐ 4.9/5</span>
-            <span className="text-[#666] font-normal">
-              na podstawie 2300+ opinii
-            </span>
+          <div className="mt-7 flex items-center justify-center gap-4">
+            <button
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#a493ef] text-white"
+              aria-label="Poprzednia opinia"
+            >
+              <ArrowLeft className="h-5 w-5" strokeWidth={3} />
+            </button>
+            <div className="flex gap-2">
+              <span className="h-3 w-3 rounded-full bg-[#7057ff]" />
+              <span className="h-3 w-3 rounded-full bg-[#d6d5e8]" />
+              <span className="h-3 w-3 rounded-full bg-[#d6d5e8]" />
+            </div>
+            <button
+              type="button"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#7057ff] text-white"
+              aria-label="Następna opinia"
+            >
+              <ArrowRight className="h-5 w-5" strokeWidth={3} />
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="nagrania"
+          className="cartoon-panel mt-10 grid overflow-hidden rounded-[32px] md:grid-cols-[0.72fr_1.28fr]"
+        >
+          <div className="flex flex-col justify-center px-7 py-10 md:px-12">
+            <p className="mb-4 w-fit rounded-xl bg-[#ff5144] px-4 py-2 text-sm font-extrabold text-white">
+              Nagrania i animacje
+            </p>
+            <h2 className="font-display text-4xl leading-[0.98] text-[#06296b] md:text-6xl">
+              Ucz się z najlepszymi AI korepetytorami
+            </h2>
+            <p className="mt-5 text-lg font-bold leading-8 text-[#6e7fa6]">
+              Zamiast suchego tekstu dostajesz krótkie nagrania, animacje i
+              przykłady krok po kroku. W każdej chwili możesz dopytać czat.
+            </p>
+            <a
+              href="/auth/register"
+              className="cartoon-button mt-8 inline-flex w-fit items-center gap-3 rounded-xl bg-[#ff5144] px-6 py-4 font-extrabold text-white"
+            >
+              Zobacz nagrania
+              <Play className="h-4 w-4 fill-white" />
+            </a>
           </div>
 
-          <blockquote className="mt-5 max-w-xl italic text-[#555]">
-            &ldquo;TutorAI całkowicie zmienił moje podejście do nauki. Zamiast
-            wkuwania na pamięć, wreszcie rozumiem zagadnienia i potrafię
-            je zastosować na egzaminach.&rdquo;
-          </blockquote>
+          <div className="grid gap-5 bg-[#fff1ed] p-5 lg:grid-cols-[1fr_0.36fr]">
+            <div className="relative overflow-hidden rounded-[24px] bg-[#13213e] shadow-[0_20px_50px_rgba(6,41,107,0.2)]">
+              <Image
+                src="/assets/tutorai-video-lesson.png"
+                alt="Miniatura nagrania AI korepetytora wyjaśniającego równania kwadratowe"
+                width={680}
+                height={476}
+                loading="eager"
+                className="h-full min-h-[290px] w-full object-cover"
+              />
+              <button
+                type="button"
+                className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-[#ff5144] shadow-xl"
+                aria-label="Odtwórz nagranie"
+              >
+                <Play className="ml-1 h-9 w-9 fill-current" />
+              </button>
+            </div>
+
+            <aside className="rounded-[24px] bg-white p-5">
+              <h3 className="text-lg font-extrabold text-[#06296b]">Równania kwadratowe</h3>
+              <p className="mt-1 text-sm font-bold text-[#8a9abb]">4 krótkie filmy</p>
+              <div className="mt-5 grid gap-3">
+                {playlist.map((item, index) => (
+                  <div key={item} className="flex items-center gap-3 rounded-2xl bg-[#fff4f1] p-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ff5144] text-sm font-extrabold text-white">
+                      {index + 1}
+                    </span>
+                    <span className="text-sm font-extrabold text-[#06296b]">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
     </section>
