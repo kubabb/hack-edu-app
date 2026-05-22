@@ -160,7 +160,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               href="/"
               className="rounded-xl border border-[#dce7f5] bg-white px-4 py-2 text-sm font-extrabold text-[#06296b]"
             >
-              Landing page
             </Link>
           </div>
           {children}
