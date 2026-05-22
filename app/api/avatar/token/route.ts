@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     const adapter = new HeyGenAvatarAdapter(heygenKey);
-    const sessionData = await adapter.createSession('91342979-4c4c-44f1-bd3b-1c846d20341e');
+    const sessionData = await adapter.createSession('9650a758-1085-4d49-8bf3-f347565ec229');
 
     return NextResponse.json({ 
       sessionToken: sessionData.sessionToken
