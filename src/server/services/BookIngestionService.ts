@@ -3,6 +3,7 @@ import { BookPageRepository } from '../repositories/BookPageRepository';
 import { OcrAdapter } from '../adapters/OcrAdapter';
 import { BookChunkingService } from './BookChunkingService';
 import { EmbeddingService } from './EmbeddingService';
+import { GraphBuilderService } from './GraphBuilderService';
 
 export class BookIngestionService {
   constructor(
@@ -10,7 +11,8 @@ export class BookIngestionService {
     private pageRepo: BookPageRepository,
     private ocrAdapter: OcrAdapter,
     private chunkingService: BookChunkingService,
-    private embeddingService: EmbeddingService
+    private embeddingService: EmbeddingService,
+    private graphBuilderService: GraphBuilderService
   ) {}
 
   async createBook(userId: string, title: string) {
@@ -26,6 +28,7 @@ export class BookIngestionService {
       );
       await this.chunkingService.chunkPages(pageRecords);
       await this.embeddingService.embedBookChunks(bookId);
+      await this.graphBuilderService.buildGraph(bookId);
       await this.bookRepo.updateStatus(bookId, 'PROCESSED');
     } catch (e) {
       await this.bookRepo.updateStatus(bookId, 'FAILED');

@@ -7,7 +7,21 @@ export async function auth() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+  let dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+  if (!dbUser) {
+    try {
+      dbUser = await prisma.user.create({
+        data: {
+          id: user.id,
+          email: user.email!,
+          name: user.user_metadata?.name || user.email,
+          password: '', // domyślnie pusty dla logowania zewnętrznego
+        }
+      });
+    } catch (e) {
+      console.error('Error creating user in auth.ts:', e);
+    }
+  }
 
   return {
     user: {
