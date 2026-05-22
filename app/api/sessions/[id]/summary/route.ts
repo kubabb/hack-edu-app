@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Pobierz sesję
     const learningSession = await prisma.learningSession.findUnique({
-      where: { id: sessionId, userId: (session.user as any).id },
+      where: { id: sessionId },
       include: {
         messages: {
           orderBy: { createdAt: 'asc' }
@@ -21,7 +21,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     });
 
-    if (!learningSession) return NextResponse.json({ error: 'Sesja nie znaleziona' }, { status: 404 });
+    if (!learningSession || learningSession.userId !== (session.user as any).id) {
+      return NextResponse.json({ error: 'Sesja nie znaleziona' }, { status: 404 });
+    }
 
     const body = await req.json().catch(() => ({}));
     const frontendMessages = body.messages || [];
@@ -72,7 +74,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
 
     // Zgodnie z prośbą "aby nie zapisywało tych pdfów/ksiazek":
-    // Usuwamy wektory i tymczasowe dane
+    // Usuwamy wektory i tymczasowe dane, ale najpierw odpinamy węzły grafu, żeby ich nie usunąć kaskadowo
+    await prisma.graphNode.updateMany({
+      where: { sessionId },
+      data: { chunkId: null }
+    });
     await prisma.sessionChunk.deleteMany({ where: { sessionId } });
 
     return NextResponse.json({ success: true, summary: summaryText });
