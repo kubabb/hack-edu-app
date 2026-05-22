@@ -91,7 +91,7 @@ export default function HeroSection() {
             </motion.p>
 
             <motion.a
-              href="#"
+              href="/auth/register"
               className="mt-8 inline-flex items-center justify-center bg-[#1d7874] text-white text-base font-semibold px-10 py-3.5 rounded-lg hover:scale-105 transition-transform shadow-lg"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}

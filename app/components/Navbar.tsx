@@ -82,7 +82,7 @@ export default function Navbar() {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <a
-              href="#"
+              href="/auth/login"
               className={`text-[14px] font-semibold transition-colors ${
                 scrolled
                   ? "text-[#1a1a1a] hover:text-[#2ba599]"
@@ -92,7 +92,7 @@ export default function Navbar() {
               Zaloguj się
             </a>
             <a
-              href="#"
+              href="/auth/register"
               className="inline-flex items-center justify-center bg-[#1d7874] text-white text-[14px] font-semibold px-6 py-2.5 rounded-lg hover:scale-105 transition-transform shadow-[0_0_15px_rgba(29,120,116,0.4)]"
             >
               Zacznij naukę
@@ -160,13 +160,13 @@ export default function Navbar() {
                 transition={{ delay: 0.35 }}
               >
                 <a
-                  href="#"
+                  href="/auth/login"
                   className="text-base font-semibold text-[#1a1a1a] hover:text-[#2ba599] transition-colors"
                 >
                   Zaloguj się
                 </a>
                 <a
-                  href="#"
+                  href="/auth/register"
                   className="w-full inline-flex items-center justify-center bg-[#1d7874] text-white text-base font-semibold px-6 py-3 rounded-lg hover:scale-105 transition-transform shadow-[0_0_15px_rgba(29,120,116,0.4)]"
                 >
                   Zacznij naukę

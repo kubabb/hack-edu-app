@@ -53,12 +53,12 @@ export default function CTASection() {
           Bez zobowiązań, bez karty kredytowej.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button className="bg-[#1d7874] text-white px-8 py-3 rounded-lg font-medium transition-transform hover:scale-105 cursor-pointer">
+          <a href="/auth/register" className="bg-[#1d7874] text-white px-8 py-3 rounded-lg font-medium transition-transform hover:scale-105 cursor-pointer inline-flex items-center justify-center">
             Rozpocznij bezpłatnie
-          </button>
-          <button className="border border-[#1d7874] text-[#1d7874] px-8 py-3 rounded-lg font-medium transition-colors hover:bg-[#f0fffe] cursor-pointer">
-            Obejrzyj demo
-          </button>
+          </a>
+          <a href="/dashboard" className="border border-[#1d7874] text-[#1d7874] px-8 py-3 rounded-lg font-medium transition-colors hover:bg-[#f0fffe] cursor-pointer inline-flex items-center justify-center">
+            Przejdź do aplikacji
+          </a>
         </div>
       </div>
     </section>

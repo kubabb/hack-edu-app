@@ -1,0 +1,32 @@
+// Supabase Auth compat layer — replaces @auth/next-auth v5 (next-auth)
+import { createClient } from '@/src/lib/supabase/server'
+import { prisma } from '@/src/server/prisma'
+
+export async function auth() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email!,
+      name: dbUser?.name || user.user_metadata?.name || user.email,
+      role: dbUser?.role || 'STUDENT',
+    }
+  }
+}
+
+// ---- compat stubs for removed NextAuth exports ----
+export async function signIn() {
+  throw new Error('Use Supabase client signIn: supabase.auth.signInWithPassword()')
+}
+export async function signOut() {
+  throw new Error('Use Supabase client signOut: supabase.auth.signOut()')
+}
+export const handlers = {
+  GET: () => new Response('NextAuth removed. Use Supabase auth.', { status: 410 }),
+  POST: () => new Response('NextAuth removed. Use Supabase auth.', { status: 410 }),
+}
