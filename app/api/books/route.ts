@@ -47,7 +47,11 @@ export async function POST(req: NextRequest) {
   const ingestionService = new BookIngestionService(bookRepo, pageRepo, ocrAdapter, chunkingService, embeddingService);
 
   const book = await ingestionService.createBook((session.user as any).id, title);
-  await ingestionService.processBook(book.id, filePath);
+  
+  // Przetwarzanie asynchroniczne w tle, bez oczekiwania
+  ingestionService.processBook(book.id, filePath).catch(err => {
+    console.error('Błąd asynchronicznego przetwarzania książki:', err);
+  });
 
   return NextResponse.json({ bookId: book.id, status: book.status });
 }

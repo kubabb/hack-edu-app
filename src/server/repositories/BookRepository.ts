@@ -12,7 +12,15 @@ export class BookRepository {
   }
 
   async findByUserId(userId: string): Promise<Book[]> {
-    return this.prisma.book.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.book.findMany({ 
+      where: { userId }, 
+      include: {
+        _count: {
+          select: { pages: true, chunks: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' } 
+    }) as any;
   }
 
   async updateStatus(id: string, status: BookStatus): Promise<Book> {

@@ -4,8 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -60,7 +61,7 @@ model User {
 model Book {
   id           String        @id @default(cuid())
   userId       String
-  user         User          @relation(fields: [userId], references: [id])
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   title        String
   status       BookStatus    @default(UPLOADED)
   pages        BookPage[]
@@ -75,7 +76,7 @@ model Book {
 model BookPage {
   id         String      @id @default(cuid())
   bookId     String
-  book       Book        @relation(fields: [bookId], references: [id])
+  book       Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
   pageNumber Int
   rawText    String      @db.Text
   ocrMeta    Json?
@@ -86,9 +87,9 @@ model BookPage {
 model BookChunk {
   id        String      @id @default(cuid())
   bookId    String
-  book      Book        @relation(fields: [bookId], references: [id])
+  book      Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
   pageId    String
-  page      BookPage    @relation(fields: [pageId], references: [id])
+  page      BookPage    @relation(fields: [pageId], references: [id], onDelete: Cascade)
   type      ChunkType   @default(OTHER)
   content   String      @db.Text
   position  Int
@@ -100,7 +101,7 @@ model BookChunk {
 model Embedding {
   id        String    @id @default(cuid())
   chunkId   String    @unique
-  chunk     BookChunk @relation(fields: [chunkId], references: [id])
+  chunk     BookChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
   vector    Bytes
   provider  String    @default("openai")
   createdAt DateTime  @default(now())
@@ -109,9 +110,9 @@ model Embedding {
 model GraphNode {
   id        String      @id @default(cuid())
   bookId    String
-  book      Book        @relation(fields: [bookId], references: [id])
+  book      Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
   chunkId   String?
-  chunk     BookChunk?  @relation(fields: [chunkId], references: [id])
+  chunk     BookChunk?  @relation(fields: [chunkId], references: [id], onDelete: Cascade)
   type      NodeType
   label     String
   outgoing  GraphEdge[] @relation("Source")
@@ -122,11 +123,11 @@ model GraphNode {
 model GraphEdge {
   id       String   @id @default(cuid())
   bookId   String
-  book     Book     @relation(fields: [bookId], references: [id])
+  book     Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
   sourceId String
-  source   GraphNode @relation("Source", fields: [sourceId], references: [id])
+  source   GraphNode @relation("Source", fields: [sourceId], references: [id], onDelete: Cascade)
   targetId String
-  target   GraphNode @relation("Target", fields: [targetId], references: [id])
+  target   GraphNode @relation("Target", fields: [targetId], references: [id], onDelete: Cascade)
   type     EdgeType
   weight   Float    @default(1.0)
 
@@ -138,9 +139,9 @@ model GraphEdge {
 model ChatSession {
   id        String        @id @default(cuid())
   userId    String
-  user      User          @relation(fields: [userId], references: [id])
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   bookId    String
-  book      Book          @relation(fields: [bookId], references: [id])
+  book      Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
   messages  ChatMessage[]
   createdAt DateTime      @default(now())
   endedAt   DateTime?
@@ -149,7 +150,7 @@ model ChatSession {
 model ChatMessage {
   id             String      @id @default(cuid())
   sessionId      String
-  session        ChatSession @relation(fields: [sessionId], references: [id])
+  session        ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   role           MessageRole
   content        String      @db.Text
   createdAt      DateTime    @default(now())
