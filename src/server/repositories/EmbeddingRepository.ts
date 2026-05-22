@@ -21,16 +21,16 @@ export class EmbeddingRepository {
     return created;
   }
 
-  async findByBookId(bookId: string): Promise<(Embedding & { chunk: { content: string } | null })[]> {
+  async findBySessionId(sessionId: string): Promise<(Embedding & { chunk: { content: string } | null })[]> {
     return this.prisma.embedding.findMany({
-      where: { chunk: { bookId } },
+      where: { chunk: { sessionId } },
       include: { chunk: { select: { content: true } } },
     });
   }
 
-  async findNearest(bookId: string, vector: Uint8Array, limit: number = 5): Promise<(Embedding & { chunk: { content: string } | null })[]> {
+  async findNearest(sessionId: string, vector: Uint8Array, limit: number = 5): Promise<(Embedding & { chunk: { content: string } | null })[]> {
     return this.prisma.embedding.findMany({
-      where: { chunk: { bookId } },
+      where: { chunk: { sessionId } },
       include: { chunk: { select: { content: true } } },
       take: limit,
     });

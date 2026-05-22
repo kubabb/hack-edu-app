@@ -1,16 +1,16 @@
-import { BookChunkRepository } from '../repositories/BookChunkRepository';
+import { SessionChunkRepository } from '../repositories/SessionChunkRepository';
 import { EmbeddingRepository } from '../repositories/EmbeddingRepository';
 import { EmbeddingAdapter } from '../adapters/EmbeddingAdapter';
 
 export class EmbeddingService {
   constructor(
-    private chunkRepo: BookChunkRepository,
+    private chunkRepo: SessionChunkRepository,
     private embeddingRepo: EmbeddingRepository,
     private embeddingAdapter: EmbeddingAdapter
   ) {}
 
-  async embedBookChunks(bookId: string) {
-    const chunks = await this.chunkRepo.findByBookId(bookId);
+  async embedSessionChunks(sessionId: string) {
+    const chunks = await this.chunkRepo.findBySessionId(sessionId);
     if (chunks.length === 0) return;
     const texts = chunks.map((c) => c.content);
     const embeddings = await this.embeddingAdapter.embed(texts);

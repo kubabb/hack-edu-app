@@ -1,39 +1,39 @@
 import { GraphNodeRepository } from '../repositories/GraphNodeRepository';
 import { GraphEdgeRepository } from '../repositories/GraphEdgeRepository';
-import { BookChunkRepository } from '../repositories/BookChunkRepository';
+import { SessionChunkRepository } from '../repositories/SessionChunkRepository';
 import { EmbeddingRepository } from '../repositories/EmbeddingRepository';
 
 export class GraphBuilderService {
   constructor(
     private nodeRepo: GraphNodeRepository,
     private edgeRepo: GraphEdgeRepository,
-    private chunkRepo: BookChunkRepository,
+    private chunkRepo: SessionChunkRepository,
     private embeddingRepo: EmbeddingRepository
   ) {}
 
-  async buildGraph(bookId: string) {
-    const chunks = await this.chunkRepo.findByBookId(bookId);
+  async buildGraph(sessionId: string) {
+    const chunks = await this.chunkRepo.findBySessionId(sessionId);
     if (chunks.length === 0) return;
 
     const nodes = await this.nodeRepo.createMany(
       chunks.map((c) => ({
-        bookId,
+        sessionId,
         chunkId: c.id,
         type: this.inferNodeType(c.type),
         label: c.content.substring(0, 100),
       }))
     );
 
-    const edges: { bookId: string; sourceId: string; targetId: string; type: string; weight: number }[] = [];
+    const edges: { sessionId: string; sourceId: string; targetId: string; type: string; weight: number }[] = [];
 
     // Structural edges: NEXT
     for (let i = 0; i < nodes.length - 1; i++) {
-      edges.push({ bookId, sourceId: nodes[i].id, targetId: nodes[i + 1].id, type: 'NEXT', weight: 1.0 });
+      edges.push({ sessionId, sourceId: nodes[i].id, targetId: nodes[i + 1].id, type: 'NEXT', weight: 1.0 });
     }
 
     // Similarity edges: SIMILAR (placeholder until pgvector cosine query is wired)
     // TODO: replace with actual vector similarity search
-    const vectors = await this.embeddingRepo.findByBookId(bookId);
+    const vectors = await this.embeddingRepo.findBySessionId(sessionId);
     for (let i = 0; i < vectors.length; i++) {
       for (let j = i + 1; j < vectors.length; j++) {
         const sim = this.cosineSimilarity(
@@ -41,7 +41,7 @@ export class GraphBuilderService {
           new Float32Array(vectors[j].vector.buffer)
         );
         if (sim > 0.8) {
-          edges.push({ bookId, sourceId: nodes[i].id, targetId: nodes[j].id, type: 'SIMILAR', weight: sim });
+          edges.push({ sessionId, sourceId: nodes[i].id, targetId: nodes[j].id, type: 'SIMILAR', weight: sim });
         }
       }
     }

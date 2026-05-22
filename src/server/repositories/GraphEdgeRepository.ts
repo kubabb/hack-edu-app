@@ -3,11 +3,11 @@ import { PrismaClient, GraphEdge } from '@prisma/client';
 export class GraphEdgeRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async create(data: { bookId: string; sourceId: string; targetId: string; type: string; weight?: number }): Promise<GraphEdge> {
+  async create(data: { sessionId: string; sourceId: string; targetId: string; type: string; weight?: number }): Promise<GraphEdge> {
     return this.prisma.graphEdge.create({ data: data as any });
   }
 
-  async createMany(edges: { bookId: string; sourceId: string; targetId: string; type: string; weight?: number }[]): Promise<GraphEdge[]> {
+  async createMany(edges: { sessionId: string; sourceId: string; targetId: string; type: string; weight?: number }[]): Promise<GraphEdge[]> {
     const created = [];
     for (const e of edges) {
       created.push(await this.prisma.graphEdge.create({ data: e as any }));
@@ -15,8 +15,8 @@ export class GraphEdgeRepository {
     return created;
   }
 
-  async findByBookId(bookId: string): Promise<GraphEdge[]> {
-    return this.prisma.graphEdge.findMany({ where: { bookId } });
+  async findBySessionId(sessionId: string): Promise<GraphEdge[]> {
+    return this.prisma.graphEdge.findMany({ where: { sessionId } });
   }
 
   async findBySourceId(sourceId: string): Promise<GraphEdge[]> {

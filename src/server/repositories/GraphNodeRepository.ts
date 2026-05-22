@@ -3,11 +3,11 @@ import { PrismaClient, GraphNode } from '@prisma/client';
 export class GraphNodeRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async create(data: { bookId: string; chunkId?: string; type: string; label: string }): Promise<GraphNode> {
+  async create(data: { sessionId: string; chunkId?: string; type: string; label: string }): Promise<GraphNode> {
     return this.prisma.graphNode.create({ data: data as any });
   }
 
-  async createMany(nodes: { bookId: string; chunkId?: string; type: string; label: string }[]): Promise<GraphNode[]> {
+  async createMany(nodes: { sessionId: string; chunkId?: string; type: string; label: string }[]): Promise<GraphNode[]> {
     const created = [];
     for (const n of nodes) {
       created.push(await this.prisma.graphNode.create({ data: n as any }));
@@ -15,8 +15,8 @@ export class GraphNodeRepository {
     return created;
   }
 
-  async findByBookId(bookId: string): Promise<GraphNode[]> {
-    return this.prisma.graphNode.findMany({ where: { bookId } });
+  async findBySessionId(sessionId: string): Promise<GraphNode[]> {
+    return this.prisma.graphNode.findMany({ where: { sessionId } });
   }
 
   async findByIdWithNeighbors(id: string): Promise<GraphNode & { outgoing: (GraphNode & { target: GraphNode })[]; incoming: (GraphNode & { source: GraphNode })[]; chunk: { content: string } | null }> {

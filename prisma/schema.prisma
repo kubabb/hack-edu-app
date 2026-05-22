@@ -14,7 +14,7 @@ enum UserRole {
   ADMIN
 }
 
-enum BookStatus {
+enum SessionStatus {
   UPLOADED
   PROCESSING
   PROCESSED
@@ -47,112 +47,87 @@ enum MessageRole {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String?
-  role         UserRole      @default(STUDENT)
-  password     String
-  books        Book[]
-  chatSessions ChatSession[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String?
+  role             UserRole          @default(STUDENT)
+  password         String
+  learningSessions LearningSession[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
-model Book {
-  id           String        @id @default(cuid())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title        String
-  status       BookStatus    @default(UPLOADED)
-  pages        BookPage[]
-  chunks       BookChunk[]
-  nodes        GraphNode[]
-  edges        GraphEdge[]
-  chatSessions ChatSession[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+model LearningSession {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     String
+  status    SessionStatus   @default(UPLOADED)
+  summary   String?         @db.Text
+  chunks    SessionChunk[]
+  nodes     GraphNode[]
+  edges     GraphEdge[]
+  messages  ChatMessage[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 }
 
-model BookPage {
-  id         String      @id @default(cuid())
-  bookId     String
-  book       Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  pageNumber Int
-  rawText    String      @db.Text
-  ocrMeta    Json?
-  chunks     BookChunk[]
-  createdAt  DateTime    @default(now())
-}
-
-model BookChunk {
-  id        String      @id @default(cuid())
-  bookId    String
-  book      Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  pageId    String
-  page      BookPage    @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  type      ChunkType   @default(OTHER)
-  content   String      @db.Text
+model SessionChunk {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type      ChunkType       @default(OTHER)
+  content   String          @db.Text
   position  Int
   embedding Embedding?
   graphNodes GraphNode[]
-  createdAt DateTime    @default(now())
+  createdAt DateTime        @default(now())
 }
 
 model Embedding {
-  id        String    @id @default(cuid())
-  chunkId   String    @unique
-  chunk     BookChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+  id        String       @id @default(cuid())
+  chunkId   String       @unique
+  chunk     SessionChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
   vector    Bytes
-  provider  String    @default("openai")
-  createdAt DateTime  @default(now())
+  provider  String       @default("openai")
+  createdAt DateTime     @default(now())
 }
 
 model GraphNode {
-  id        String      @id @default(cuid())
-  bookId    String
-  book      Book        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  id        String          @id @default(cuid())
+  sessionId String
+  session   LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   chunkId   String?
-  chunk     BookChunk?  @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+  chunk     SessionChunk?   @relation(fields: [chunkId], references: [id], onDelete: Cascade)
   type      NodeType
   label     String
-  outgoing  GraphEdge[] @relation("Source")
-  incoming  GraphEdge[] @relation("Target")
-  createdAt DateTime    @default(now())
+  outgoing  GraphEdge[]     @relation("Source")
+  incoming  GraphEdge[]     @relation("Target")
+  createdAt DateTime        @default(now())
 }
 
 model GraphEdge {
-  id       String   @id @default(cuid())
-  bookId   String
-  book     Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  sourceId String
-  source   GraphNode @relation("Source", fields: [sourceId], references: [id], onDelete: Cascade)
-  targetId String
-  target   GraphNode @relation("Target", fields: [targetId], references: [id], onDelete: Cascade)
-  type     EdgeType
-  weight   Float    @default(1.0)
+  id        String          @id @default(cuid())
+  sessionId String
+  session   LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourceId  String
+  source    GraphNode       @relation("Source", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId  String
+  target    GraphNode       @relation("Target", fields: [targetId], references: [id], onDelete: Cascade)
+  type      EdgeType
+  weight    Float           @default(1.0)
 
-  @@index([bookId])
+  @@index([sessionId])
   @@index([sourceId])
   @@index([targetId])
 }
 
-model ChatSession {
-  id        String        @id @default(cuid())
-  userId    String
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bookId    String
-  book      Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  messages  ChatMessage[]
-  createdAt DateTime      @default(now())
-  endedAt   DateTime?
-}
-
 model ChatMessage {
-  id             String      @id @default(cuid())
+  id             String          @id @default(cuid())
   sessionId      String
-  session        ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session        LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   role           MessageRole
-  content        String      @db.Text
-  createdAt      DateTime    @default(now())
+  content        String          @db.Text
+  createdAt      DateTime        @default(now())
   avatarVideoUrl String?
 }

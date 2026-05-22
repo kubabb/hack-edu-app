@@ -4,7 +4,7 @@ import { ArrowRight, ClipboardList } from "lucide-react";
 export default function CTASection() {
   return (
     <section id="cennik" className="px-4 py-12">
-      <div className="cartoon-panel mx-auto grid max-w-5xl overflow-hidden rounded-[32px] md:grid-cols-[0.95fr_1.05fr]">
+      <div className="cartoon-panel mx-auto grid max-w-7xl overflow-hidden rounded-[32px] md:grid-cols-[0.95fr_1.05fr]">
         <div className="flex flex-col justify-center px-7 py-10 md:px-12">
           <h2 className="font-display text-4xl leading-none text-[#ff5144] md:text-6xl">
             Uczmy się razem!

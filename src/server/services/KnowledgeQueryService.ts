@@ -1,17 +1,17 @@
 import { EmbeddingAdapter } from '../adapters/EmbeddingAdapter';
 import { EmbeddingRepository } from '../repositories/EmbeddingRepository';
 import { GraphNodeRepository } from '../repositories/GraphNodeRepository';
-import { BookChunkRepository } from '../repositories/BookChunkRepository';
+import { SessionChunkRepository } from '../repositories/SessionChunkRepository';
 
 export class KnowledgeQueryService {
   constructor(
     private embeddingAdapter: EmbeddingAdapter,
     private embeddingRepo: EmbeddingRepository,
     private nodeRepo: GraphNodeRepository,
-    private chunkRepo: BookChunkRepository
+    private chunkRepo: SessionChunkRepository
   ) {}
 
-  async getContextForQuestion(bookId: string, question: string, selectedNodeId?: string): Promise<string[]> {
+  async getContextForQuestion(sessionId: string, question: string, selectedNodeId?: string): Promise<string[]> {
     const contexts: string[] = [];
 
     if (selectedNodeId) {
@@ -27,7 +27,7 @@ export class KnowledgeQueryService {
 
     const [questionEmbedding] = await this.embeddingAdapter.embed([question]);
     const vector = Buffer.from(new Float32Array(questionEmbedding).buffer);
-    const nearest = await this.embeddingRepo.findNearest(bookId, vector, 5);
+    const nearest = await this.embeddingRepo.findNearest(sessionId, vector, 5);
     for (const emb of nearest) {
       if (emb.chunk) contexts.push(emb.chunk.content);
     }

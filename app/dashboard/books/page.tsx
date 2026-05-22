@@ -14,46 +14,44 @@ import {
 import DashboardLayout from '@/src/components/DashboardLayout'
 import { readJsonSafely } from '@/src/lib/http/json'
 
-interface Book {
+interface Session {
   id: string
-  title: string
+  topic: string
   status: string
+  summary?: string | null
   createdAt: string
-  _count?: { pages: number; chunks: number }
 }
 
-function statusLabel(status: string) {
-  return status === 'READY' ? 'Gotowa do nauki' : 'AI jeszcze czyta'
-}
-
-export default function BooksPage() {
-  const [books, setBooks] = useState<Book[]>([])
+export default function MaterialsPage() {
+  const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
 
-    async function loadBooks() {
+    async function loadSessions() {
       try {
-        const res = await fetch('/api/books')
-        const data = await readJsonSafely<{ books?: Book[] }>(res)
-        if (!cancelled) setBooks(data?.books || [])
+        const res = await fetch('/api/sessions')
+        const data = await readJsonSafely<{ sessions?: Session[] }>(res)
+        if (!cancelled) {
+          const allSessions = data?.sessions || []
+          // Filtrujemy tylko te sesje, które mają już podsumowanie
+          const finishedSessions = allSessions.filter(s => !!s.summary)
+          setSessions(finishedSessions)
+        }
       } catch {
-        if (!cancelled) setBooks([])
+        if (!cancelled) setSessions([])
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
 
-    void loadBooks()
+    void loadSessions()
 
     return () => {
       cancelled = true
     }
   }, [])
-
-  const totalPages = books.reduce((sum, book) => sum + (book._count?.pages || 0), 0)
-  const totalChunks = books.reduce((sum, book) => sum + (book._count?.chunks || 0), 0)
 
   return (
     <DashboardLayout>
@@ -68,8 +66,7 @@ export default function BooksPage() {
               Twoje materiały
             </h1>
             <p className="mt-4 max-w-2xl text-base font-bold leading-7 text-[#6e7fa6]">
-              Tutaj lądują książki, notatki i skany, które TutorAI zamienia w graf wiedzy,
-              quizy oraz krótkie wyjaśnienia.
+              Tutaj znajdują się notatki i podsumowania z Twoich wcześniejszych lekcji. Możesz do nich wracać, by utrwalić wiedzę!
             </p>
           </div>
 
@@ -78,16 +75,15 @@ export default function BooksPage() {
             className="cartoon-button inline-flex items-center justify-center gap-3 rounded-2xl bg-[#6ff0ae] px-5 py-4 font-extrabold text-[#063f40]"
           >
             <Plus className="h-5 w-5" />
-            Dodaj materiał
+            Rozpocznij nową lekcję
           </Link>
         </div>
       </section>
 
       <section className="mt-5 grid gap-4 md:grid-cols-3">
         {[
-          { label: 'Materiały', value: books.length, icon: BookOpen, color: 'bg-[#7057ff]' },
-          { label: 'Strony', value: totalPages, icon: FileText, color: 'bg-[#ff5144]' },
-          { label: 'Chunki wiedzy', value: totalChunks, icon: Brain, color: 'bg-[#20b981]' },
+          { label: 'Zakończone lekcje', value: sessions.length, icon: BookOpen, color: 'bg-[#7057ff]' },
+          { label: 'Aktywność', value: 'Wysoka', icon: Brain, color: 'bg-[#20b981]' },
         ].map((stat) => {
           const Icon = stat.icon
           return (
@@ -111,7 +107,7 @@ export default function BooksPage() {
           <div className="cartoon-panel flex items-center justify-center rounded-[32px] py-20">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#dce7f5] border-b-[#7057ff]" />
           </div>
-        ) : books.length === 0 ? (
+        ) : sessions.length === 0 ? (
           <div className="cartoon-panel rounded-[32px] p-10 text-center">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[26px] bg-[#f0edff] text-[#7057ff]">
               <GraduationCap className="h-10 w-10" strokeWidth={2.7} />
@@ -120,51 +116,42 @@ export default function BooksPage() {
               Biblioteka jest jeszcze pusta
             </h2>
             <p className="mx-auto mt-3 max-w-lg text-sm font-bold leading-6 text-[#6e7fa6]">
-              Dodaj pierwszy PDF albo zdjęcie notatek. TutorAI wyciągnie pojęcia, połączy je
-              w graf i przygotuje rozmowę z AI korepetytorem.
+              Aby pojawiły się tutaj materiały, musisz najpierw zakończyć swoją pierwszą interaktywną lekcję z AI korepetytorem. Notatka wygeneruje się automatycznie.
             </p>
             <Link
               href="/dashboard"
               className="cartoon-button mt-7 inline-flex items-center gap-3 rounded-2xl bg-[#ff5144] px-5 py-4 font-extrabold text-white"
             >
               <Plus className="h-5 w-5" />
-              Dodaj pierwszy materiał
+              Rozpocznij naukę
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {books.map((book) => (
+            {sessions.map((session) => (
               <Link
-                key={book.id}
-                href={`/dashboard/books/${book.id}`}
+                key={session.id}
+                href={`/dashboard/summary/${session.id}`}
                 className="cartoon-panel group flex min-h-64 flex-col justify-between rounded-[28px] p-5 transition-transform hover:-translate-y-1"
               >
                 <div>
                   <div className="mb-5 flex items-start justify-between gap-4">
                     <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fff4cf] text-[#ff5144]">
-                      <BookOpen className="h-7 w-7" strokeWidth={2.7} />
+                      <FileText className="h-7 w-7" strokeWidth={2.7} />
                     </span>
                     <span className="rounded-full bg-[#eafff4] px-3 py-2 text-xs font-extrabold text-[#11805e]">
-                      {statusLabel(book.status)}
+                      Wygenerowano notatkę
                     </span>
                   </div>
                   <h2 className="text-xl font-extrabold leading-snug text-[#06296b] group-hover:text-[#7057ff]">
-                    {book.title}
+                    {session.topic}
                   </h2>
                   <p className="mt-2 text-xs font-bold text-[#9aa8c1]">
-                    Dodano {new Date(book.createdAt).toLocaleDateString('pl-PL')}
+                    Zakończono {new Date(session.createdAt).toLocaleDateString('pl-PL')}
                   </p>
                 </div>
 
-                <div className="mt-8 flex items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2 text-xs font-extrabold text-[#6e7fa6]">
-                    <span className="rounded-full bg-[#f3f6ff] px-3 py-2">
-                      {book._count?.pages || 0} stron
-                    </span>
-                    <span className="rounded-full bg-[#fff4cf] px-3 py-2">
-                      {book._count?.chunks || 0} chunków
-                    </span>
-                  </div>
+                <div className="mt-8 flex items-center justify-end gap-3">
                   <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#7057ff] text-white">
                     <ChevronRight className="h-5 w-5" strokeWidth={2.7} />
                   </span>

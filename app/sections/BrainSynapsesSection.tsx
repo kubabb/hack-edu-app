@@ -64,17 +64,13 @@ export default function BrainSynapsesSection() {
           </a>
         </div>
 
-        <div className="relative min-h-[420px] bg-[#f0edff] px-5 py-8 md:min-h-[600px]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_14%,rgba(111,240,174,0.38),transparent_18rem),radial-gradient(circle_at_20%_76%,rgba(255,81,68,0.12),transparent_18rem)]" />
-          <div className="relative mx-auto flex h-full max-w-[650px] items-center">
-            <Image
-              src="/assets/tutorai-app-mockup.png"
-              alt="Mockup panelu TutorAI z planem nauki, quizami i postępami"
-              width={930}
-              height={660}
-              className="w-full rounded-[28px] shadow-[0_22px_60px_rgba(6,41,107,0.18)]"
-            />
-          </div>
+        <div className="relative min-h-[420px] bg-[#f0edff] md:min-h-[600px]">
+          <Image
+            src="/assets/tutorai-app-mockup.png"
+            alt="Mockup panelu TutorAI z planem nauki, quizami i postępami"
+            fill
+            className="object-cover object-left"
+          />
         </div>
       </div>
     </section>
