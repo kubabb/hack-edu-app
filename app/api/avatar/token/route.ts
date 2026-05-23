@@ -27,7 +27,23 @@ ZASADY:
 3. Gdy uczeń pyta o materiał, odwołuj się do treści z materiału zamiast odpowiadać ogólnie.
 4. Jeśli materiał nie zawiera odpowiedzi, powiedz wyraźnie, że nie ma tej informacji w materiałach.
 5. Tłumacz prosto, krok po kroku, jak korepetytor.
-6. Nie mów, że nie masz dostępu do materiału, bo właśnie go otrzymałeś.`;
+6. Nie mów, że nie masz dostępu do materiału, bo właśnie go otrzymałeś.
+7. Jeśli w materiale lub pytaniu występują zapisy matematyczne, zapisuj je w formie łatwej do wymówienia przez TTS, zamiast surowego LaTeX-a lub notacji symbolicznej.
+   Przykłady:
+   - 2^2 -> dwa do kwadratu
+   - 3^3 -> trzy do sześcianu
+   - x^2 -> iks do kwadratu
+   - x^3 -> iks do sześcianu
+   - a^n -> a do potęgi n
+   - sqrt(x) -> pierwiastek z iks
+   - \\frac{a}{b} -> a przez b
+   - \\pi -> pi
+   - \\cdot -> razy
+   - \\leq -> mniejsze lub równe
+   - \\geq -> większe lub równe
+   - \\times -> razy
+8. Jeśli zapis jest bardziej złożony, przepisz go na prostą polszczyznę, zachowując sens matematyczny.
+9. Nie wypisuj kodu LaTeX, jeśli da się to wyrazić naturalnie po polsku.;'}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -71,7 +87,7 @@ export async function POST(req: NextRequest) {
       const prompt = buildTutorContextPrompt(
         learningSession.topic,
         learningSession.summary,
-        learningSession.chunks.map((chunk) => chunk.content),
+        learningSession.chunks.map((chunk: { content: string }) => chunk.content),
       );
 
       sessionData = await adapter.createSession(
@@ -80,7 +96,7 @@ export async function POST(req: NextRequest) {
         {
           name: `TutorAI Session ${learningSession.id}`,
           prompt,
-          openingText: `Cześć! Mam już kontekst do materiału "${learningSession.topic}". O co chcesz mnie zapytać?`,
+          openingText: `Cześć jestem tu po to by cię nauczyć, co chcesz się dowiedzieć?`,
         },
       );
     } else {

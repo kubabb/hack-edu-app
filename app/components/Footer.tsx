@@ -3,15 +3,31 @@ import { Camera, GraduationCap, Mail, MessageCircle, Video } from "lucide-react"
 const columns = [
   {
     title: "Produkt",
-    links: ["Funkcje", "Nagrania", "Graf wiedzy", "Cennik"],
+    links: [
+      { label: "Funkcje", href: "#funkcje" },
+      { label: "Nagrania", href: "#nagrania" },
+      { label: "Graf wiedzy", href: "#" },
+      { label: "Cennik", href: "#cennik" },
+    ],
   },
   {
     title: "Nauka",
-    links: ["Blog", "Poradniki", "FAQ", "Dla szkół"],
+    links: [
+      { label: "Blog", href: "#" },
+      { label: "Poradniki", href: "#" },
+      { label: "FAQ", href: "#" },
+      { label: "Dla szkół", href: "#" },
+    ],
   },
   {
     title: "Firma",
-    links: ["O nas", "Kontakt", "Regulamin", "Prywatność"],
+    links: [
+      { label: "O nas", href: "#" },
+      { label: "Kontakt", href: "#" },
+      { label: "Regulamin", href: "/prawne/regulamin" },
+      { label: "Prywatność", href: "/prawne/prywatnosc" },
+      { label: "Prawa autorskie", href: "/prawne/prawa-autorskie" },
+    ],
   },
 ];
 
@@ -48,9 +64,9 @@ export default function Footer() {
               <h3 className="font-extrabold text-[#06296b]">{column.title}</h3>
               <ul className="mt-4 grid gap-3">
                 {column.links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm font-bold text-[#6e7fa6] hover:text-[#06296b]">
-                      {link}
+                  <li key={link.label}>
+                    <a href={link.href} className="text-sm font-bold text-[#6e7fa6] hover:text-[#06296b]">
+                      {link.label}
                     </a>
                   </li>
                 ))}

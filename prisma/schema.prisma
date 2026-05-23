@@ -5,8 +5,6 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -55,6 +53,9 @@ model User {
   learningSessions LearningSession[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  aiMinutesUsed    Int               @default(0)
+  aiMinutesLimit   Int               @default(10)
+  subscriptionPlan String            @default("Uczeń")
 }
 
 model LearningSession {

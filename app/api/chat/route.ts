@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const llmAdapter = new OpenAILlmAdapter(process.env.OPENAI_API_KEY || '');
     const tutoringService = new TutoringService(sessionRepo, messageRepo, knowledgeQueryService, llmAdapter);
 
-    const result = await tutoringService.handleUserMessage(activeSessionId, message, selectedNodeId);
+    const result = await tutoringService.handleUserMessage(activeSessionId, message, selectedNodeId || undefined);
 
     return NextResponse.json({
       sessionId: activeSessionId,

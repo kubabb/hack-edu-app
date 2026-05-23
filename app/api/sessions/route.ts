@@ -7,6 +7,7 @@ import { SessionChunkRepository } from '@/src/server/repositories/SessionChunkRe
 import { EmbeddingRepository } from '@/src/server/repositories/EmbeddingRepository';
 import { PdfParseAdapter } from '@/src/server/adapters/PdfParseAdapter';
 import { TextFileAdapter } from '@/src/server/adapters/TextFileAdapter';
+import { TesseractOcrAdapter } from '@/src/server/adapters/TesseractOcrAdapter';
 import { SessionChunkingService } from '@/src/server/services/SessionChunkingService';
 import { EmbeddingService } from '@/src/server/services/EmbeddingService';
 import { OpenAIEmbeddingAdapter } from '@/src/server/adapters/OpenAIEmbeddingAdapter';
@@ -23,7 +24,7 @@ import { fetchYouTubeTranscript } from '@/src/server/lib/youtube';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-const SUPPORTED_EXTENSIONS = new Set(['pdf', 'md', 'txt']);
+const SUPPORTED_EXTENSIONS = new Set(['pdf', 'md', 'txt', 'png', 'jpg', 'jpeg']);
 
 function getAuthenticatedUserId(session: Awaited<ReturnType<typeof auth>>) {
   const userId = (session?.user as { id?: string } | undefined)?.id;
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
     // Prepare adapters
     const pdfAdapter = new PdfParseAdapter();
     const textAdapter = new TextFileAdapter();
+    const tesseractAdapter = new TesseractOcrAdapter();
     const chunkRepo = new SessionChunkRepository(prisma);
     const chunkingService = new SessionChunkingService(chunkRepo);
     const embeddingAdapter = new OpenAIEmbeddingAdapter(process.env.OPENAI_API_KEY || '');
@@ -96,6 +98,7 @@ export async function POST(req: NextRequest) {
     const getAdapter = (filename: string) => {
       const ext = filename.split('.').pop()?.toLowerCase();
       if (ext === 'md' || ext === 'txt') return textAdapter;
+      if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') return tesseractAdapter;
       return pdfAdapter;
     };
 

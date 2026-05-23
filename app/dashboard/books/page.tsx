@@ -25,6 +25,7 @@ interface Session {
 export default function MaterialsPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
+  const [usage, setUsage] = useState({ used: 0, limit: 10, plan: 'Uczeń', percent: 0, flashcardsCount: 0 })
 
   useEffect(() => {
     let cancelled = false
@@ -47,6 +48,22 @@ export default function MaterialsPage() {
     }
 
     void loadSessions()
+
+    async function loadUsage() {
+      try {
+        const res = await fetch('/api/user/usage')
+        const data = await readJsonSafely<{ aiMinutesUsed?: number, aiMinutesLimit?: number, subscriptionPlan?: string, flashcardsCount?: number }>(res)
+        if (!cancelled && data && typeof data.aiMinutesUsed === 'number') {
+          const used = data.aiMinutesUsed
+          const limit = data.aiMinutesLimit || 10
+          const percent = Math.min(Math.round((used / limit) * 100), 100)
+          setUsage({ used, limit, plan: data.subscriptionPlan || 'Uczeń', percent, flashcardsCount: data.flashcardsCount || 0 })
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+    void loadUsage()
 
     return () => {
       cancelled = true
@@ -81,25 +98,61 @@ export default function MaterialsPage() {
       </section>
 
       <section className="mt-5 grid gap-4 md:grid-cols-3">
-        {[
-          { label: 'Zakończone lekcje', value: sessions.length, icon: BookOpen, color: 'bg-[#7057ff]' },
-          { label: 'Aktywność', value: 'Wysoka', icon: Brain, color: 'bg-[#20b981]' },
-        ].map((stat) => {
-          const Icon = stat.icon
-          return (
-            <article key={stat.label} className="cartoon-panel rounded-[28px] p-5">
-              <div className="flex items-center gap-4">
-                <span className={`flex h-14 w-14 items-center justify-center rounded-2xl text-white ${stat.color}`}>
-                  <Icon className="h-6 w-6" strokeWidth={2.7} />
-                </span>
-                <div>
-                  <p className="font-display text-4xl leading-none text-[#06296b]">{stat.value}</p>
-                  <p className="text-sm font-extrabold text-[#6e7fa6]">{stat.label}</p>
-                </div>
+        <article className="cartoon-panel rounded-[28px] p-5">
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#7057ff] text-white">
+              <BookOpen className="h-6 w-6" strokeWidth={2.7} />
+            </span>
+            <div>
+              <p className="font-display text-4xl leading-none text-[#06296b]">{sessions.length}</p>
+              <p className="text-sm font-extrabold text-[#6e7fa6]">Zakończone lekcje</p>
+            </div>
+          </div>
+        </article>
+
+        <article className="cartoon-panel rounded-[28px] p-5">
+          <div className="flex items-center gap-4">
+            <div className="relative flex h-14 w-14 items-center justify-center">
+              <svg className="h-14 w-14 -rotate-90" viewBox="0 0 36 36">
+                <path
+                  className="text-[#e6edf7]"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                />
+                <path
+                  className="text-[#ff5144]"
+                  strokeDasharray={`${usage.percent}, 100`}
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Brain className="h-5 w-5 text-[#ff5144]" strokeWidth={2.7} />
               </div>
-            </article>
-          )
-        })}
+            </div>
+            <div>
+              <p className="font-display text-2xl leading-none text-[#06296b]">{usage.used} / {usage.limit} min</p>
+              <p className="text-sm font-extrabold text-[#6e7fa6]">Zużycie AI ({usage.percent}%)</p>
+            </div>
+          </div>
+        </article>
+
+        <article className="cartoon-panel rounded-[28px] p-5">
+          <div className="flex items-center gap-4">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#ffb84d] text-white">
+              <Sparkles className="h-6 w-6" strokeWidth={2.7} />
+            </span>
+            <div>
+              <p className="font-display text-4xl leading-none text-[#06296b]">{usage.flashcardsCount}</p>
+              <p className="text-sm font-extrabold text-[#6e7fa6]">Wygenerowane fiszki</p>
+            </div>
+          </div>
+        </article>
       </section>
 
       <section className="mt-7">

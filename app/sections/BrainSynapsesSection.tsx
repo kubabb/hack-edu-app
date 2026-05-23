@@ -1,8 +1,6 @@
-"use client";
-
 import Image from "next/image";
-import { ArrowRight, BookOpen, BrainCircuit, ClipboardCheck } from "lucide-react";
-import { useUser } from "@/src/hooks/useUser";
+import { BookOpen, BrainCircuit, ClipboardCheck } from "lucide-react";
+import BrainAuthButtons from "./BrainAuthButtons";
 
 const steps = [
   {
@@ -23,7 +21,6 @@ const steps = [
 ];
 
 export default function BrainSynapsesSection() {
-  const { user, loading } = useUser();
 
   return (
     <section id="jak-to-dziala" className="px-4 py-10">
@@ -60,25 +57,7 @@ export default function BrainSynapsesSection() {
             })}
           </div>
 
-          {loading ? (
-            <div className="mt-8 h-14 w-44 animate-pulse rounded-xl bg-[#f0f4f8]"></div>
-          ) : user ? (
-            <a
-              href="/dashboard"
-              className="cartoon-button mt-8 inline-flex w-fit items-center gap-3 rounded-xl bg-[#ff5144] px-6 py-4 font-extrabold text-white"
-            >
-              Przejdź do panelu
-              <ArrowRight className="h-4 w-4" strokeWidth={3} />
-            </a>
-          ) : (
-            <a
-              href="/auth/register"
-              className="cartoon-button mt-8 inline-flex w-fit items-center gap-3 rounded-xl bg-[#ff5144] px-6 py-4 font-extrabold text-white"
-            >
-              Wypróbuj teraz
-              <ArrowRight className="h-4 w-4" strokeWidth={3} />
-            </a>
-          )}
+          <BrainAuthButtons />
         </div>
 
         <div className="relative min-h-[420px] bg-[#f0edff] md:min-h-[600px]">

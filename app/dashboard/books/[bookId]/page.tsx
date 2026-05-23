@@ -129,6 +129,15 @@ export default function BookDetailPage() {
               <p className="mt-4 max-w-2xl text-base font-bold leading-7 text-[#6e7fa6]">
                 Przeglądaj graf wiedzy, mapę myśli, notatki AI, fiszki i rozmawiaj z korepetytorem.
               </p>
+              <div className="mt-6 flex flex-wrap gap-4">
+                <Link
+                  href={`/dashboard/session/${bookId}`}
+                  className="cartoon-button inline-flex items-center gap-3 rounded-[20px] bg-[#7057ff] px-6 py-4 font-display text-lg text-white shadow-md transition-transform hover:-translate-y-1 hover:shadow-lg"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  Porozmawiaj na żywo z tutorem
+                </Link>
+              </div>
             </div>
           </div>
         </div>

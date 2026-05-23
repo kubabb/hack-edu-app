@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Network,
   PlaySquare,
   Shield,
   Sparkles,
@@ -19,7 +20,9 @@ import { createClient } from '@/src/lib/supabase/client'
 const navItems = [
   { href: '/dashboard', label: 'Pulpit', icon: LayoutDashboard },
   { href: '/dashboard/books', label: 'Materiały', icon: BookOpen },
+  { href: '/dashboard/board', label: 'Tablica', icon: Network },
   { href: '/dashboard/youtube', label: 'Transkrypcja z YouTube', icon: PlaySquare },
+  { href: '/dashboard/pricing', label: 'Cennik', icon: Sparkles },
   { href: '/dashboard/profile', label: 'Mój Profil', icon: User },
 ]
 
@@ -42,13 +45,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.location.href = '/'
   }
 
+  const isBoardPage = pathname === '/dashboard/board'
+
   return (
-    <div className="min-h-screen bg-[#f6f4ef] text-[#06296b]">
+    <div className={`bg-[#f6f4ef] text-[#06296b] ${isBoardPage ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       <aside className="fixed inset-y-4 left-4 z-30 hidden w-72 flex-col overflow-hidden rounded-[28px] border border-[#dfe8f4] bg-[#fffefb] shadow-[0_18px_50px_rgba(6,41,107,0.1)] lg:flex">
         <div className="border-b border-[#e6edf7] px-6 py-6">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-14 w-auto" />
-            <span className="font-display text-3xl text-[#06296b] -mt-2">nastoprocent</span>
+            <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-10 w-auto" />
+            <span className="font-display text-2xl text-[#06296b] -mt-1.5">nastoprocent</span>
           </Link>
         </div>
 
@@ -115,8 +120,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-20 border-b border-[#dfe8f4] bg-[#f6f4ef]/85 px-4 py-3 backdrop-blur lg:hidden">
         <div className="cartoon-panel flex items-center justify-between rounded-2xl px-4 py-3">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-12 w-auto" />
-            <span className="font-display text-2xl text-[#06296b] -mt-1.5">nastoprocent</span>
+            <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-9 w-auto" />
+            <span className="font-display text-xl text-[#06296b] -mt-1">nastoprocent</span>
           </Link>
           <div className="flex items-center gap-2">
             <button
@@ -162,20 +167,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
       </header>
 
-      <main className="px-4 py-6 lg:ml-80 lg:px-8 lg:py-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#f6dec0] bg-[#fff4cf] px-4 py-2 text-sm font-extrabold text-[#06296b]">
-              <Sparkles className="h-4 w-4 text-[#ff5144]" fill="#ff5144" />
-              Panel nauki TutorAI
-            </div>
-            <Link
-              href="/"
-              className="rounded-xl border border-[#dce7f5] bg-white px-4 py-2 text-sm font-extrabold text-[#06296b]"
-            >
-              Powrót do strony głównej
-            </Link>
-          </div>
+      <main className={`px-4 lg:ml-80 lg:px-8 ${isBoardPage ? 'py-4 h-screen' : 'py-6 lg:py-8'}`}>
+        <div className={`mx-auto ${isBoardPage ? 'h-full w-full max-w-none' : 'max-w-7xl'}`}>
           {children}
         </div>
       </main>

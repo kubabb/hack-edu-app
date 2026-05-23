@@ -58,9 +58,19 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
   const [error, setError] = useState('')
   const [chatMessage, setChatMessage] = useState('')
   const [messages, setMessages] = useState<{role: string, content: string}[]>([])
+  const [quizData, setQuizData] = useState<{question: string, options: string[]} | null>(null)
 
   // Stan dyktafonu i kamery usera
   const [isRecording, setIsRecording] = useState(false)
+
+  // Śledzenie zużycia minut
+  useEffect(() => {
+    if (connecting) return;
+    const interval = setInterval(() => {
+      fetch('/api/user/usage', { method: 'POST' }).catch(err => console.error('Ping usage failed', err));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [connecting]);
 
   // Pobieranie strumienia z kamery usera
   useEffect(() => {
@@ -132,9 +142,34 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
           setMessages(prev => [...prev, { role: 'user', content: text }])
         })
         newSession.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, (event: unknown) => {
-          const text = readEventText(event)
+          let text = readEventText(event)
           if (!text) return
-          setMessages(prev => [...prev, { role: 'assistant', content: text }])
+
+          // Wyłapanie tagu [QUIZ|...] z uwzględnieniem znaków nowej linii
+          const quizMatch = text.match(/\[QUIZ\|([\s\S]*?)\]/)
+          if (quizMatch) {
+            const parts = quizMatch[1].split('|').map(p => p.trim())
+            const question = parts[0]
+            const options = parts.slice(1).filter(Boolean)
+            if (options.length === 0) {
+              options.push('Rozumiem', 'Nie wiem')
+            }
+            
+            // Przerwij awatara
+            if (sessionRef.current) {
+              sessionRef.current.interrupt()
+            }
+            
+            // Pokaż popup
+            setQuizData({ question, options })
+            
+            // Usuń tag z tekstu w czacie
+            text = text.replace(quizMatch[0], '').trim()
+          }
+
+          if (text) {
+            setMessages(prev => [...prev, { role: 'assistant', content: text }])
+          }
         })
         
         await newSession.start()
@@ -222,9 +257,13 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
   return (
     <div className="flex h-screen w-full flex-col bg-[#f3f6ff] text-[#06296b]">
       <header className="flex items-center justify-between px-8 py-4">
-        <h1 className="font-display text-2xl tracking-wide text-[#7057ff]">TutorAI Live</h1>
-        <button onClick={endSession} className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-500 transition-colors hover:bg-red-500 hover:text-white" title="Zakończ i odbierz podsumowanie">
+        <div className="flex items-center gap-2">
+          <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-10 w-auto" />
+          <span className="font-display text-2xl text-[#06296b] -mt-1.5">nastoprocent</span>
+        </div>
+        <button onClick={endSession} className="flex h-12 px-5 items-center justify-center gap-2 rounded-full bg-red-100 text-red-600 font-bold transition-colors hover:bg-red-500 hover:text-white shadow-sm hover:shadow-md" title="Zakończ i odbierz podsumowanie">
           <PhoneOff className="h-5 w-5" />
+          <span>Zakończ rozmowę</span>
         </button>
       </header>
 
@@ -245,10 +284,34 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
           )}
           <video 
             ref={videoRef} 
-            className="h-full w-full object-cover" 
+            className={`h-full w-full object-cover transition-all duration-500 ${quizData ? 'blur-md' : ''}`} 
             autoPlay 
             playsInline 
           />
+
+          {quizData && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center p-6">
+              <div className="absolute inset-0 bg-[#06296b]/40 backdrop-blur-sm" />
+              <div className="relative z-10 w-full max-w-lg cartoon-panel rounded-[32px] bg-white p-8 text-center shadow-2xl">
+                <h3 className="mb-6 font-display text-3xl text-[#06296b]">{quizData.question}</h3>
+                <div className="grid gap-3">
+                  {quizData.options.map((opt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        const msg = `Mój wybór to: ${opt}`;
+                        sendMessageToBot(msg);
+                        setQuizData(null);
+                      }}
+                      className="cartoon-button w-full rounded-2xl bg-[#f0edff] px-6 py-4 text-lg font-extrabold text-[#7057ff] transition-all hover:bg-[#7057ff] hover:text-white"
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Mini kamerka usera */}
           <video
@@ -277,6 +340,19 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
               ) : (
                 <Mic className="h-7 w-7" />
               )}
+            </button>
+            <button
+              onClick={() => {
+                if (sessionRef.current) {
+                  sessionRef.current.interrupt();
+                }
+              }}
+              disabled={connecting}
+              className="flex h-16 px-6 items-center justify-center gap-2 rounded-[20px] transition-transform bg-amber-500 hover:bg-amber-400 text-white hover:scale-105 shadow-lg disabled:opacity-50"
+              title="Przerwij asystentowi"
+            >
+              <span className="text-2xl">✋</span>
+              <span className="font-bold">Przerwij</span>
             </button>
           </div>
         </section>

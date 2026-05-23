@@ -98,7 +98,7 @@ export default function KnowledgeGraph({
       const res = await fetch(`/api/sessions/${bookId}/graph/enrich`, { method: 'POST' })
       const data = await readJsonSafely<GeneratedGraphResponse>(res)
       if (!res.ok) throw new Error(data?.error || 'Błąd generowania')
-      if (data.graph) {
+      if (data?.graph) {
         const nodes: GraphNode[] = (data.graph.nodes || []).map((node) => ({
           ...node,
           color: typeColors[node.type] || '#6e7fa6',
@@ -399,12 +399,12 @@ export default function KnowledgeGraph({
       {/* Graph */}
       <div ref={containerRef} className="h-full w-full rounded-[26px] bg-[#fffefb]">
         <ForceGraph2D
-          ref={graphRef}
+          ref={graphRef as any}
           graphData={data}
           nodeLabel="label"
-          nodeColor={(node: GraphNode) => highlightNodeId === node.id ? '#ffb84d' : node.color}
-          linkColor={(link: ApiEdge) => edgeColors[link.type] || '#dce7f5'}
-          linkWidth={(link: ApiEdge) => Math.max(1.5, (link.weight || 0.6) * 3)}
+          nodeColor={(node: any) => highlightNodeId === node.id ? '#ffb84d' : node.color}
+          linkColor={(link: any) => edgeColors[link.type] || '#dce7f5'}
+          linkWidth={(link: any) => Math.max(1.5, (link.weight || 0.6) * 3)}
           nodeRelSize={7}
           onNodeClick={handleNodeClick}
           width={dims.width}

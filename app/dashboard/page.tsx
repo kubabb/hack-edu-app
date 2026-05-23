@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { BookOpen, Brain, ChevronRight, MessageSquare, Play } from 'lucide-react'
 import DashboardLayout from '@/src/components/DashboardLayout'
 import StartSessionForm from '@/src/components/StartSessionForm'
+import SubscriptionPopup from '@/src/components/SubscriptionPopup'
 import { useUser } from '@/src/hooks/useUser'
 import { readJsonSafely } from '@/src/lib/http/json'
 
@@ -47,6 +48,7 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
+      <SubscriptionPopup />
       <section className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] md:items-start">
         <div className="cartoon-panel rounded-[32px] p-6 md:p-10">
           <p className="mb-4 w-fit rounded-xl bg-[#7057ff] px-4 py-2 text-sm font-extrabold text-white">

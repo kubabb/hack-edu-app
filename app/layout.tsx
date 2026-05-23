@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bree_Serif, Nunito } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
+import CopyrightBanner from "@/src/components/CopyrightBanner";
 
 const nunito = Nunito({
   variable: "--font-nunito",
@@ -36,7 +37,10 @@ export default function RootLayout({
   return (
     <html lang="pl" className={`${nunito.variable} ${bree.variable} antialiased`}>
       <body className="min-h-full flex flex-col">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <CopyrightBanner />
+        </Providers>
       </body>
     </html>
   );

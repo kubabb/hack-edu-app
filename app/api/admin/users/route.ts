@@ -10,7 +10,7 @@ export async function GET() {
 
   const users = await prisma.user.findMany({
     include: {
-      _count: { select: { books: true, chatSessions: true } },
+      _count: { select: { learningSessions: true } },
     },
     orderBy: { createdAt: 'desc' },
   });

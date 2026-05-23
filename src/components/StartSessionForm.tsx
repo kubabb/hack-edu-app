@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { File, FolderOpen, Loader2, MessageCircle, FileText, Play, Upload, X } from 'lucide-react'
 import { readJsonSafely } from '@/src/lib/http/json'
 import { useRouter } from 'next/navigation'
@@ -18,7 +18,7 @@ type UploadedFile = File & {
   webkitRelativePath?: string
 }
 
-const SUPPORTED_EXTENSIONS = ['pdf', 'md', 'txt']
+const SUPPORTED_EXTENSIONS = ['pdf', 'md', 'txt', 'png', 'jpg', 'jpeg']
 const MAX_FOLDER_FILES = 60
 const MAX_TOTAL_SIZE_BYTES = 30 * 1024 * 1024
 
@@ -62,13 +62,13 @@ export default function StartSessionForm({
 
       if (filtered.length === 0) {
         setFiles([])
-        setError('W folderze nie znaleziono obsługiwanych plików. Dodaj `PDF`, `MD` albo `TXT`.')
+        setError('W folderze nie znaleziono obsługiwanych plików. Dodaj `PDF`, `MD`, `TXT`, `PNG` lub `JPG`.')
         return
       }
 
       if (filtered.length > MAX_FOLDER_FILES) {
         setFiles([])
-        setError(`Folder jest za duży. Wybierz maksymalnie ${MAX_FOLDER_FILES} plików PDF, MD lub TXT.`)
+        setError(`Folder jest za duży. Wybierz maksymalnie ${MAX_FOLDER_FILES} obsługiwanych plików.`)
         return
       }
 
@@ -82,7 +82,7 @@ export default function StartSessionForm({
       setError('')
       const skippedCount = arr.length - filtered.length
       if (skippedCount > 0) {
-        setError(`Pominąłem ${skippedCount} nieobsługiwanych plików. Importuję tylko PDF, MD i TXT.`)
+        setError(`Pominąłem ${skippedCount} nieobsługiwanych plików. Importuję tylko PDF, MD, TXT, PNG i JPG.`)
       }
 
       const firstAccepted = filtered[0]
@@ -250,11 +250,11 @@ export default function StartSessionForm({
         <span className="text-sm font-extrabold text-[#6e7fa6]">
           {youtubeUrl
             ? mode === 'chat'
-              ? 'Opcjonalnie dodaj PDF, Markdown, TXT lub folder jako dodatkowy kontekst:'
-              : 'Opcjonalnie dodaj kolejne pliki (PDF, MD, TXT) lub cały folder:'
+              ? 'Opcjonalnie dodaj plik (tekst/obraz) lub folder jako dodatkowy kontekst:'
+              : 'Opcjonalnie dodaj kolejne pliki (tekst/obraz) lub cały folder:'
             : mode === 'chat'
-              ? 'Masz notatki? Opcjonalnie wgraj PDF, Markdown, TXT lub folder:'
-              : 'Wgraj pliki (PDF, MD, TXT) lub cały folder:'}
+              ? 'Masz notatki lub zadanie na zdjęciu? Wgraj obraz, tekst lub PDF:'
+              : 'Wgraj pliki (PDF, MD, TXT, obrazy) lub cały folder:'}
         </span>
         <div
           onDragOver={(e) => {
@@ -308,7 +308,7 @@ export default function StartSessionForm({
                 </span>
                 <input
                   type="file"
-                  accept=".pdf,.md,.txt"
+                  accept=".pdf,.md,.txt,.png,.jpg,.jpeg"
                   multiple
                   onChange={handleFileChange}
                   className="hidden"
@@ -324,7 +324,7 @@ export default function StartSessionForm({
                 <input
                   {...directoryPickerAttributes}
                   type="file"
-                  accept=".pdf,.md,.txt"
+                  accept=".pdf,.md,.txt,.png,.jpg,.jpeg"
                   multiple
                   onChange={handleFileChange}
                   className="hidden"
@@ -341,17 +341,39 @@ export default function StartSessionForm({
         </p>
       )}
 
-      <button
-        type="submit"
-        suppressHydrationWarning
-        disabled={!topic.trim() || starting}
-        className={`cartoon-button mt-4 inline-flex w-full items-center justify-center gap-3 rounded-[24px] px-6 py-5 font-display text-2xl text-white transition-transform hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-60 ${
-          mode === 'notes' ? 'bg-[#20b981]' : 'bg-[#7057ff]'
-        }`}
-      >
-        {starting ? <Loader2 className="h-6 w-6 animate-spin" /> : mode === 'notes' ? <FileText className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current" />}
-        {starting ? 'Przygotowywanie...' : mode === 'notes' ? 'Analizuj materiały' : youtubeUrl ? 'Przygotuj rozmowę' : 'Zaczynamy!'}
-      </button>
+      <AnimatedSubmitButton mode={mode} starting={starting} youtubeUrl={!!youtubeUrl} />
     </form>
+  )
+}
+
+function AnimatedSubmitButton({ mode, starting, youtubeUrl }: { mode: SessionMode; starting: boolean; youtubeUrl: boolean }) {
+  const [loadingText, setLoadingText] = useState('Przygotowywanie')
+  const [dotCount, setDotCount] = useState(0)
+  
+  useEffect(() => {
+    if (!starting) {
+      setLoadingText('Przygotowywanie')
+      setDotCount(0)
+      return
+    }
+    const interval = setInterval(() => setDotCount(c => (c + 1) % 4), 500)
+    const timeout = setTimeout(() => setLoadingText('Jeszcze chwilę'), 4000)
+    return () => { clearInterval(interval); clearTimeout(timeout) }
+  }, [starting])
+
+  const dots = '.'.repeat(dotCount)
+
+  return (
+    <button
+      type="submit"
+      suppressHydrationWarning
+      disabled={starting}
+      className={`cartoon-button mt-4 inline-flex w-full items-center justify-center gap-3 rounded-[24px] px-6 py-5 font-display text-2xl text-white transition-transform hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-60 ${
+        mode === 'notes' ? 'bg-[#20b981]' : 'bg-[#7057ff]'
+      }`}
+    >
+      {starting ? <Loader2 className="h-6 w-6 animate-spin" /> : mode === 'notes' ? <FileText className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current" />}
+      {starting ? `${loadingText}${dots}` : mode === 'notes' ? 'Analizuj materiały' : youtubeUrl ? 'Przygotuj rozmowę' : 'Zaczynamy!'}
+    </button>
   )
 }
