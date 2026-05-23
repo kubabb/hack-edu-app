@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let summaryText = 'Brak wystarczającej interakcji do stworzenia podsumowania.';
 
     if (conversationText.trim().length > 0) {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [

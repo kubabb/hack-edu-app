@@ -1,11 +1,11 @@
-import OpenAI from 'openai';
 import { EmbeddingAdapter } from './EmbeddingAdapter';
+import { createOpenAIClient } from '../lib/openai-client';
 
 export class OpenAIEmbeddingAdapter implements EmbeddingAdapter {
-  private client: OpenAI;
+  private client: ReturnType<typeof createOpenAIClient>;
 
   constructor(apiKey: string) {
-    this.client = new OpenAI({ apiKey });
+    this.client = createOpenAIClient(apiKey);
   }
 
   async embed(texts: string[]): Promise<number[][]> {

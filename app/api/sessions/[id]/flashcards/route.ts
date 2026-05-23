@@ -89,7 +89,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Generate flashcards with LLM
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
 
     const prompt = `
       Jesteś ekspertem edukacyjnym. Poniżej znajduje się materiał edukacyjny. 

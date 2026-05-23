@@ -7,6 +7,7 @@ import { EmbeddingRepository } from '@/src/server/repositories/EmbeddingReposito
 import { GraphNodeRepository } from '@/src/server/repositories/GraphNodeRepository';
 import { SessionChunkRepository } from '@/src/server/repositories/SessionChunkRepository';
 import OpenAI from 'openai';
+import { createOpenAIClient } from '@/src/server/lib/openai-client';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const relevantChunks = Array.from(new Set([...keyConcepts, ...structureChunks]));
 
     // Generuj notatki przez LLM
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
 
     const contextBlock = relevantChunks.length > 0
       ? `MATERIAŁ ŹRÓDŁOWY (najważniejsze fragmenty):\n\n${relevantChunks.map((c, i) => `[Fragment ${i + 1}]\n${c}`).join('\n\n---\n\n')}`
