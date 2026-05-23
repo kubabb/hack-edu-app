@@ -18,21 +18,42 @@ import { createOpenAIClient, resolveModel } from '@/src/server/lib/openai-client
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
+import { fetchYouTubeTranscript } from '@/src/server/lib/youtube';
+
+function getAuthenticatedUserId(session: Awaited<ReturnType<typeof auth>>) {
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+  if (!userId) {
+    throw new Error('Brak identyfikatora użytkownika.');
+  }
+  return userId;
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return 'unknown error';
+}
+
+function getErrorStack(error: unknown) {
+  if (error instanceof Error) return error.stack;
+  return undefined;
+}
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const userId = getAuthenticatedUserId(session);
 
     const formData = await req.formData();
     const files = formData.getAll('file') as File[];
     const topic = (formData.get('title') as string) || 'Brak tematu';
     const mode = (formData.get('mode') as string) || 'chat';
+    const youtubeUrl = (formData.get('youtubeUrl') as string | null)?.trim() || '';
 
     const sessionRepo = new LearningSessionRepository(prisma);
 
-    if (files.length === 0) {
-      const learningSession = await sessionRepo.create({ userId: (session.user as any).id, topic, status: 'PROCESSED' });
+    if (files.length === 0 && !youtubeUrl) {
+      const learningSession = await sessionRepo.create({ userId, topic, status: 'PROCESSED' });
       return NextResponse.json({ sessionId: learningSession.id, status: learningSession.status, mode });
     }
 
@@ -61,6 +82,25 @@ export async function POST(req: NextRequest) {
     
     let allText = '';
     const filePaths: string[] = [];
+
+    if (youtubeUrl) {
+      const transcriptData = await fetchYouTubeTranscript(youtubeUrl);
+      const transcriptHeader = [
+        `# ${transcriptData.title}`,
+        '',
+        `Źródło: ${youtubeUrl}`,
+        transcriptData.languageLabel
+          ? `Język transkrypcji: ${transcriptData.languageLabel}`
+          : undefined,
+        '',
+        '## Transkrypcja',
+        transcriptData.transcript,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      allText += transcriptHeader.trim();
+    }
     
     for (const file of files) {
       // Skip non-content files from folders
@@ -89,8 +129,8 @@ export async function POST(req: NextRequest) {
         if (fileText.trim()) {
           allText += (allText ? '\n\n---\n\n' : '') + fileText.trim();
         }
-      } catch (e: any) {
-        console.error(`Error extracting text from ${file.name}:`, e?.message);
+      } catch (e: unknown) {
+        console.error(`Error extracting text from ${file.name}:`, getErrorMessage(e));
       }
     }
 
@@ -101,16 +141,20 @@ export async function POST(req: NextRequest) {
         prisma, sessionRepo, ocrAdapter,
         chunkingService, embeddingService, graphBuilderService, chunkRepo,
       );
-      const learningSession = await ingestionService.createSession((session.user as any).id, topic);
+      const learningSession = await ingestionService.createSession(userId, topic);
       
       try {
-        await ingestionService.processSessionFile(learningSession.id, filePaths[0]);
-      } catch (err: any) {
+        const fallbackPath = youtubeUrl
+          ? await writeCombinedFallback(uploadDir, allText)
+          : filePaths[0];
+
+        await ingestionService.processSessionFile(learningSession.id, fallbackPath);
+      } catch (err: unknown) {
         return NextResponse.json({
           sessionId: learningSession.id,
           status: 'FAILED',
           mode,
-          error: `Nie udało się przetworzyć pliku: ${err?.message || 'unknown error'}`,
+          error: `Nie udało się przetworzyć pliku: ${getErrorMessage(err)}`,
         }, { status: 500 });
       }
       
@@ -130,7 +174,7 @@ export async function POST(req: NextRequest) {
       chunkingService, embeddingService, graphBuilderService, chunkRepo,
     );
 
-    const learningSession = await ingestionService.createSession((session.user as any).id, topic);
+    const learningSession = await ingestionService.createSession(userId, topic);
 
     // Write combined text to a temp .md file and process it
     const combinedPath = join(uploadDir, `${Date.now()}_combined.md`);
@@ -138,9 +182,9 @@ export async function POST(req: NextRequest) {
 
     try {
       await ingestionService.processSessionFile(learningSession.id, combinedPath);
-    } catch (err: any) {
-      const msg = err?.message || err?.toString() || 'unknown error';
-      console.error('Błąd przetwarzania pliku sesji:', msg, err?.stack?.slice(0, 500));
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err);
+      console.error('Błąd przetwarzania pliku sesji:', msg, getErrorStack(err)?.slice(0, 500));
       return NextResponse.json({
         sessionId: learningSession.id,
         status: 'FAILED',
@@ -160,10 +204,16 @@ export async function POST(req: NextRequest) {
       fileCount: files.length,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in POST /api/sessions:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) || 'Internal Server Error' }, { status: 500 });
   }
+}
+
+async function writeCombinedFallback(uploadDir: string, allText: string) {
+  const fallbackPath = join(uploadDir, `${Date.now()}_youtube_combined.md`);
+  await writeFile(fallbackPath, allText);
+  return fallbackPath;
 }
 
 async function handleNotesGeneration(
@@ -217,12 +267,13 @@ async function handleNotesGeneration(
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = getAuthenticatedUserId(session);
 
   const sessions = await prisma.learningSession.findMany({
-    where: { userId: (session.user as any).id },
+    where: { userId },
     select: {
       id: true,
       topic: true,

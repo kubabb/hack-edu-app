@@ -131,7 +131,7 @@ export default function MaterialsPage() {
             {sessions.map((session) => (
               <Link
                 key={session.id}
-                href={`/dashboard/summary/${session.id}`}
+                href={`/dashboard/books/${session.id}?tab=notes`}
                 className="cartoon-panel group flex min-h-64 flex-col justify-between rounded-[28px] p-5 transition-transform hover:-translate-y-1"
               >
                 <div>

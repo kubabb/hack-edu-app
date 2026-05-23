@@ -11,17 +11,31 @@ export class KnowledgeQueryService {
     private chunkRepo: SessionChunkRepository
   ) {}
 
+  private async tryGetNodeWithNeighbors(sessionId: string, nodeId?: string) {
+    if (!nodeId) return null;
+
+    try {
+      const node = await this.nodeRepo.findByIdWithNeighbors(nodeId);
+      if (node.sessionId !== sessionId) {
+        return null;
+      }
+      return node;
+    } catch {
+      return null;
+    }
+  }
+
   async getContextForQuestion(sessionId: string, question: string, selectedNodeId?: string): Promise<string[]> {
     const contexts: string[] = [];
 
     // Context from selected node and its neighbors
     if (selectedNodeId) {
-      const node = await this.nodeRepo.findByIdWithNeighbors(selectedNodeId);
-      if (node.chunk) contexts.push(node.chunk.content);
-      for (const edge of node.outgoing as any[]) {
+      const node = await this.tryGetNodeWithNeighbors(sessionId, selectedNodeId);
+      if (node?.chunk) contexts.push(node.chunk.content);
+      for (const edge of (node?.outgoing || []) as any[]) {
         if ((edge as any).target?.chunk) contexts.push((edge as any).target.chunk.content);
       }
-      for (const edge of node.incoming as any[]) {
+      for (const edge of (node?.incoming || []) as any[]) {
         if ((edge as any).source?.chunk) contexts.push((edge as any).source.chunk.content);
       }
     }
@@ -37,9 +51,10 @@ export class KnowledgeQueryService {
   }
 
   /** Get chunks related to a specific node and its graph neighbors */
-  async getChunksForNode(nodeId: string): Promise<string[]> {
-    const node = await this.nodeRepo.findByIdWithNeighbors(nodeId);
+  async getChunksForNode(sessionId: string, nodeId: string): Promise<string[]> {
+    const node = await this.tryGetNodeWithNeighbors(sessionId, nodeId);
     const chunks: string[] = [];
+    if (!node) return chunks;
     if (node.chunk) chunks.push(node.chunk.content);
     for (const edge of node.outgoing as any[]) {
       if ((edge as any).target?.chunk) chunks.push((edge as any).target.chunk.content);
@@ -63,11 +78,11 @@ export class KnowledgeQueryService {
 
     // Graph-based context
     if (nodeId) {
-      const node = await this.nodeRepo.findByIdWithNeighbors(nodeId);
-      if (node.chunk && !results.has('node')) {
+      const node = await this.tryGetNodeWithNeighbors(sessionId, nodeId);
+      if (node?.chunk && !results.has('node')) {
         results.set('node', { content: node.chunk.content, source: `Węzeł: ${node.label}` });
       }
-      for (const edge of node.outgoing as any[]) {
+      for (const edge of (node?.outgoing || []) as any[]) {
         if ((edge as any).target?.chunk) {
           const key = (edge as any).target.id;
           if (!results.has(key)) {

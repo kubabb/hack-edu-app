@@ -94,7 +94,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const nodeRepo = new GraphNodeRepository(prisma);
       const chunkRepo = new SessionChunkRepository(prisma);
       const knowledgeService = new KnowledgeQueryService(embeddingAdapter, embeddingRepo, nodeRepo, chunkRepo);
-      const chunks = await knowledgeService.getChunksForNode(nodeId);
+      const chunks = await knowledgeService.getChunksForNode(id, nodeId);
       contextText = chunks.join('\n\n');
       title = 'Fiszki z węzła';
       sourceType = 'node';

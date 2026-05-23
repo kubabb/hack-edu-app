@@ -48,7 +48,14 @@ export default function ChatPanel({
     setError('')
 
     const userMsg = input.trim()
+    const optimisticUserMessage: Message = {
+      id: `u-${Date.now()}`,
+      role: 'USER',
+      content: userMsg,
+    }
+
     setInput('')
+    setMessages((prev) => [...prev, optimisticUserMessage])
 
     try {
       const res = await fetch('/api/chat', {
@@ -81,14 +88,9 @@ export default function ChatPanel({
             content: 'Przeanalizowałem materiał. Zadaj kolejne pytanie, a doprecyzuję odpowiedź.',
           }
 
-      setMessages((prev) => [
-        ...prev,
-        { id: `u-${Date.now()}`, role: 'USER', content: userMsg },
-        assistantMessage,
-      ])
+      setMessages((prev) => [...prev, assistantMessage])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Nie udało się wysłać wiadomości')
-      setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'USER', content: userMsg }])
     } finally {
       setLoading(false)
     }

@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BookOpen,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   Menu,
+  PlaySquare,
   Shield,
   Sparkles,
   User
@@ -19,6 +19,7 @@ import { createClient } from '@/src/lib/supabase/client'
 const navItems = [
   { href: '/dashboard', label: 'Pulpit', icon: LayoutDashboard },
   { href: '/dashboard/books', label: 'Materiały', icon: BookOpen },
+  { href: '/dashboard/youtube', label: 'Transkrypcja z YouTube', icon: PlaySquare },
   { href: '/dashboard/profile', label: 'Mój Profil', icon: User },
 ]
 

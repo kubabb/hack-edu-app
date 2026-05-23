@@ -1,5 +1,9 @@
 import { AvatarAdapter } from './AvatarAdapter';
 
+type HeyGenContextListResponse = {
+  data?: Array<{ id: string; name?: string }>
+}
+
 export class HeyGenAvatarAdapter implements AvatarAdapter {
   constructor(private apiKey: string) {}
 
@@ -11,29 +15,39 @@ export class HeyGenAvatarAdapter implements AvatarAdapter {
     };
   }
 
-  async createSession(avatarId: string = '9650a758-1085-4d49-8bf3-f347565ec229', voiceId?: string): Promise<{ sessionToken: string }> {
+  async createSession(
+    avatarId: string = '9650a758-1085-4d49-8bf3-f347565ec229',
+    voiceId?: string,
+    contextConfig?: { name?: string; prompt?: string; openingText?: string },
+  ): Promise<{ sessionToken: string }> {
     let contextId = '';
-    
-    // 1. Spróbuj znaleźć istniejący kontekst
-    try {
-      const getCtxRes = await fetch('https://api.liveavatar.com/v1/contexts', {
-        method: 'GET',
-        headers: { 'x-api-key': this.apiKey }
-      });
-      if (getCtxRes.ok) {
-        const getCtxData = await getCtxRes.json();
-        const contexts = Array.isArray(getCtxData.data) ? getCtxData.data : [];
-        const existing = contexts.find((c: any) => c.name === 'TutorAI Session');
-        if (existing) {
-          contextId = existing.id;
+
+    if (!contextConfig?.prompt) {
+      // 1. Spróbuj znaleźć istniejący kontekst tylko dla domyślnej sesji ogólnej
+      try {
+        const getCtxRes = await fetch('https://api.liveavatar.com/v1/contexts', {
+          method: 'GET',
+          headers: { 'x-api-key': this.apiKey }
+        });
+        if (getCtxRes.ok) {
+          const getCtxData = await getCtxRes.json() as HeyGenContextListResponse;
+          const contexts = Array.isArray(getCtxData.data) ? getCtxData.data : [];
+          const existing = contexts.find((context) => context.name === 'TutorAI Session');
+          if (existing) {
+            contextId = existing.id;
+          }
         }
+      } catch (e) {
+        console.warn('Failed to fetch contexts', e);
       }
-    } catch (e) {
-      console.warn('Failed to fetch contexts', e);
     }
 
     // 2. Jeśli nie znaleziono, utwórz nowy
     if (!contextId) {
+      const contextName = contextConfig?.name || "TutorAI Session";
+      const contextPrompt = contextConfig?.prompt || "You are a helpful AI tutor.";
+      const openingText = contextConfig?.openingText || "Cześć! O czym dzisiaj porozmawiamy?";
+
       let ctxRes = await fetch('https://api.liveavatar.com/v1/contexts', {
         method: 'POST',
         headers: {
@@ -41,9 +55,9 @@ export class HeyGenAvatarAdapter implements AvatarAdapter {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: "TutorAI Session",
-          prompt: "You are a helpful AI tutor.",
-          opening_text: "Cześć! O czym dzisiaj porozmawiamy?"
+          name: contextName,
+          prompt: contextPrompt,
+          opening_text: openingText
         })
       });
 
@@ -58,9 +72,9 @@ export class HeyGenAvatarAdapter implements AvatarAdapter {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              name: `TutorAI Session ${Date.now()}`,
-              prompt: "You are a helpful AI tutor.",
-              opening_text: "Cześć! O czym dzisiaj porozmawiamy?"
+              name: `${contextName} ${Date.now()}`,
+              prompt: contextPrompt,
+              opening_text: openingText
             })
           });
           if (!ctxRes.ok) throw new Error(`Failed to create fallback context: ${await ctxRes.text()}`);

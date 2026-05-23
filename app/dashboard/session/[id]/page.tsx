@@ -2,8 +2,18 @@
 
 import { useEffect, useRef, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Mic, PhoneOff, Send, Square } from 'lucide-react'
+import { Loader2, Mic, PhoneOff, Send } from 'lucide-react'
 import { LiveAvatarSession, SessionEvent, AgentEventsEnum } from '@heygen/liveavatar-web-sdk'
+
+type TranscriptEventPayload = {
+  text?: string
+}
+
+function readEventText(event: unknown) {
+  return typeof event === 'object' && event !== null && 'text' in event && typeof (event as TranscriptEventPayload).text === 'string'
+    ? (event as TranscriptEventPayload).text || ''
+    : ''
+}
 
 const renderMarkdown = (text: string) => {
   if (!text) return null
@@ -41,7 +51,8 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const userVideoRef = useRef<HTMLVideoElement>(null)
-  const sessionRef = useRef<any>(null)
+  const sessionRef = useRef<LiveAvatarSession | null>(null)
+  const pendingTypedUserMessageRef = useRef<string | null>(null)
   
   const [connecting, setConnecting] = useState(true)
   const [error, setError] = useState('')
@@ -50,7 +61,6 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
 
   // Stan dyktafonu i kamery usera
   const [isRecording, setIsRecording] = useState(false)
-  const [isProcessingAudio, setIsProcessingAudio] = useState(false)
 
   // Pobieranie strumienia z kamery usera
   useEffect(() => {
@@ -78,11 +88,17 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
 
   useEffect(() => {
     let mounted = true
-    let currentSession: any = null
+    let currentSession: LiveAvatarSession | null = null
 
     async function initStreaming() {
       try {
-        const tokenRes = await fetch('/api/avatar/token', { method: 'POST' })
+        const tokenRes = await fetch('/api/avatar/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ sessionId })
+        })
         const tokenData = await tokenRes.json().catch(() => ({}))
         if (!tokenRes.ok) throw new Error(tokenData.error || 'Brak autoryzacji do tokenu HeyGen')
         const { sessionToken } = tokenData
@@ -106,11 +122,19 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
         })
 
         // Podpinamy nasłuchiwanie na to co mówi użytkownik i avatar
-        newSession.on(AgentEventsEnum.USER_TRANSCRIPTION, (event: any) => {
-          setMessages(prev => [...prev, { role: 'user', content: event.text }])
+        newSession.on(AgentEventsEnum.USER_TRANSCRIPTION, (event: unknown) => {
+          const text = readEventText(event)
+          if (!text) return
+          if (pendingTypedUserMessageRef.current === text) {
+            pendingTypedUserMessageRef.current = null
+            return
+          }
+          setMessages(prev => [...prev, { role: 'user', content: text }])
         })
-        newSession.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, (event: any) => {
-          setMessages(prev => [...prev, { role: 'assistant', content: event.text }])
+        newSession.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, (event: unknown) => {
+          const text = readEventText(event)
+          if (!text) return
+          setMessages(prev => [...prev, { role: 'assistant', content: text }])
         })
         
         await newSession.start()
@@ -120,17 +144,18 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
           // Usunęliśmy twardo wpisane powitanie, bo LiveAvatar wyemituje je sam przez zdarzenie AVATAR_TRANSCRIPTION
         }
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Session start error:", err)
         if (mounted) {
-          if (err.message && err.message.toLowerCase().includes('concurrency')) {
+          const message = err instanceof Error ? err.message : 'Wystąpił błąd podczas łączenia z wirtualnym korepetytorem.'
+          if (message.toLowerCase().includes('concurrency')) {
             console.log('Concurrency limit hit (Strict Mode overlap). Retrying in 1.5s...')
             setTimeout(() => {
               if (mounted) initStreaming()
             }, 1500)
             return
           }
-          setError(err.message || 'Wystąpił błąd podczas łączenia z wirtualnym korepetytorem.')
+          setError(message)
           setConnecting(false)
         }
       }
@@ -144,7 +169,7 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
         currentSession.stop().catch(() => {})
       }
     }
-  }, [])
+  }, [sessionId])
 
   const toggleRecording = async () => {
     if (!sessionRef.current || isRecording) return
@@ -161,6 +186,7 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
 
   const sendMessageToBot = (text: string) => {
     // Ręcznie dodajemy wiadomość usera do czatu
+    pendingTypedUserMessageRef.current = text
     setMessages(prev => [...prev, { role: 'user', content: text }])
     
     // LiveAvatar wysyła tekst do LLM, a awatar go wypowiada (funkcja 'message')
@@ -236,16 +262,14 @@ export default function InteractiveSessionPage({ params }: { params: Promise<{ i
           <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-4 rounded-[28px] bg-black/40 p-4 backdrop-blur-md z-10">
             <button 
               onClick={toggleRecording} 
-              disabled={isProcessingAudio || connecting || isRecording}
+              disabled={connecting || isRecording}
               className={`flex h-16 px-6 items-center justify-center gap-3 rounded-[20px] transition-transform ${
                 isRecording 
                   ? 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)]' 
                   : 'bg-white/20 hover:bg-white/30 text-white hover:scale-105'
               } disabled:opacity-90`}
             >
-              {isProcessingAudio ? (
-                <Loader2 className="h-7 w-7 animate-spin" />
-              ) : isRecording ? (
+              {isRecording ? (
                 <>
                   <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
                   <span className="font-bold">Nasłuchuję...</span>

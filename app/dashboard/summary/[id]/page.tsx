@@ -2,10 +2,12 @@
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, FileCheck, Share2, FileText, Network, Layers } from 'lucide-react'
+import { ChevronLeft, FileCheck, Share2, FileText, MessageCircle, Network, Layers } from 'lucide-react'
 import DashboardLayout from '@/src/components/DashboardLayout'
 import Flashcards from '@/src/components/Flashcards'
 import KnowledgeGraph from '@/src/components/KnowledgeGraph'
+import ChatPanel from '@/src/components/ChatPanel'
+import { readJsonSafely } from '@/src/lib/http/json'
 
 interface SummaryData {
   topic: string;
@@ -13,7 +15,14 @@ interface SummaryData {
   createdAt: string;
 }
 
-type TabType = 'note' | 'map' | 'flashcards'
+interface SessionListItem {
+  id: string
+  topic: string
+  summary?: string | null
+  createdAt: string
+}
+
+type TabType = 'note' | 'map' | 'flashcards' | 'chat'
 
 export default function SessionSummaryPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -28,8 +37,8 @@ export default function SessionSummaryPage({ params }: { params: Promise<{ id: s
       try {
         const res = await fetch(`/api/sessions`)
         if (!res.ok) throw new Error('Błąd pobierania sesji')
-        const json = await res.json()
-        const session = json.sessions?.find((b: any) => b.id === sessionId)
+        const json = await readJsonSafely<{ sessions?: SessionListItem[] }>(res)
+        const session = json?.sessions?.find((item) => item.id === sessionId)
         
         if (!session) throw new Error('Sesja nie znaleziona')
         
@@ -38,8 +47,8 @@ export default function SessionSummaryPage({ params }: { params: Promise<{ id: s
           summary: session.summary || 'Trwa generowanie podsumowania...',
           createdAt: session.createdAt
         })
-      } catch (err: any) {
-        setError(err.message)
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Nie udało się pobrać podsumowania.')
       } finally {
         setLoading(false)
       }
@@ -115,6 +124,17 @@ export default function SessionSummaryPage({ params }: { params: Promise<{ id: s
                     <Layers className="h-4 w-4" />
                     Fiszki
                   </button>
+                  <button
+                    onClick={() => setActiveTab('chat')}
+                    className={`flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-extrabold transition-all ${
+                      activeTab === 'chat'
+                        ? 'bg-[#ffb84d] text-[#06296b] shadow-[0_4px_0_0_#e39a31] active:translate-y-1 active:shadow-none'
+                        : 'bg-[#f3f6ff] text-[#6e7fa6] hover:bg-[#fff4cf] hover:text-[#06296b]'
+                    }`}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Czat z AI
+                  </button>
                 </div>
               </div>
 
@@ -134,6 +154,9 @@ export default function SessionSummaryPage({ params }: { params: Promise<{ id: s
                 )}
                 {activeTab === 'flashcards' && (
                   <Flashcards sessionId={sessionId} />
+                )}
+                {activeTab === 'chat' && (
+                  <ChatPanel bookId={sessionId} />
                 )}
               </div>
             </>

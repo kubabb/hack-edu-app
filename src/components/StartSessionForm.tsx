@@ -7,29 +7,45 @@ import { useRouter } from 'next/navigation'
 
 type SessionMode = 'chat' | 'notes'
 
+interface StartSessionFormProps {
+  initialTopic?: string
+  initialMode?: SessionMode
+  youtubeUrl?: string
+  youtubeTitle?: string
+}
+
+type UploadedFile = File & {
+  webkitRelativePath?: string
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message
   return 'Nie udało się wystartować sesji'
 }
 
-export default function StartSessionForm() {
+export default function StartSessionForm({
+  initialTopic = '',
+  initialMode = 'chat',
+  youtubeUrl,
+  youtubeTitle,
+}: StartSessionFormProps) {
   const router = useRouter()
-  const [topic, setTopic] = useState('')
+  const [topic, setTopic] = useState(initialTopic)
   const [files, setFiles] = useState<File[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
-  const [mode, setMode] = useState<SessionMode>('chat')
+  const [mode, setMode] = useState<SessionMode>(initialMode)
 
   const pickFiles = useCallback(
     (newFiles: FileList | File[]) => {
-      const arr = Array.from(newFiles)
+      const arr = Array.from(newFiles) as UploadedFile[]
       setFiles(arr)
       if (!topic && arr.length > 0) {
         // Use first file name or folder name as topic
         const firstName = arr[0].name.replace(/\.[^/.]+$/, '')
         // If it's a folder upload, use directory name
-        const relativePath = (arr[0] as any).webkitRelativePath
+        const relativePath = arr[0].webkitRelativePath
         if (relativePath) {
           const dirName = relativePath.split('/')[0]
           setTopic(dirName)
@@ -59,7 +75,15 @@ export default function StartSessionForm() {
   }
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0)
-  const isFolder = files.length > 1 || !!(files[0] as any)?.webkitRelativePath
+  const firstFile = files[0] as UploadedFile | undefined
+  const isFolder = files.length > 1 || !!firstFile?.webkitRelativePath
+  const directoryPickerAttributes = {
+    webkitdirectory: '',
+    directory: '',
+  } as React.InputHTMLAttributes<HTMLInputElement> & {
+    webkitdirectory: string
+    directory: string
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -74,6 +98,9 @@ export default function StartSessionForm() {
     const formData = new FormData()
     formData.append('title', topic.trim())
     formData.append('mode', mode)
+    if (youtubeUrl) {
+      formData.append('youtubeUrl', youtubeUrl)
+    }
     for (const f of files) {
       formData.append('file', f)
     }
@@ -152,11 +179,35 @@ export default function StartSessionForm() {
         />
       </div>
 
+      {youtubeUrl && (
+        <div className="rounded-[28px] border border-[#ffd9b5] bg-[#fff8eb] p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#ff5144] text-white">
+              <Play className="h-5 w-5 fill-current" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-extrabold text-[#b85a00]">Transkrypcja z YouTube zostanie dołączona do sesji</p>
+              <p className="mt-1 text-base font-extrabold text-[#06296b]">
+                {youtubeTitle || 'Film z YouTube'}
+              </p>
+              <p className="mt-1 break-all text-xs font-bold text-[#8d6d3e]">{youtubeUrl}</p>
+              <p className="mt-3 text-sm font-bold leading-6 text-[#6e7fa6]">
+                Możesz teraz dodać własne pliki jako dodatkowy kontekst. Podczas startu sesji pobierzemy transkrypcję filmu i połączymy ją z tymi materiałami.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-2">
         <span className="text-sm font-extrabold text-[#6e7fa6]">
-          {mode === 'chat'
-            ? 'Masz notatki? Opcjonalnie wgraj PDF, Markdown, TXT lub folder:'
-            : 'Wgraj pliki (PDF, MD, TXT) lub cały folder:'}
+          {youtubeUrl
+            ? mode === 'chat'
+              ? 'Opcjonalnie dodaj PDF, Markdown, TXT lub folder jako dodatkowy kontekst:'
+              : 'Opcjonalnie dodaj kolejne pliki (PDF, MD, TXT) lub cały folder:'
+            : mode === 'chat'
+              ? 'Masz notatki? Opcjonalnie wgraj PDF, Markdown, TXT lub folder:'
+              : 'Wgraj pliki (PDF, MD, TXT) lub cały folder:'}
         </span>
         <div
           onDragOver={(e) => {
@@ -181,7 +232,7 @@ export default function StartSessionForm() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-extrabold text-[#06296b]">
                   {isFolder
-                    ? `Folder: ${(files[0] as any).webkitRelativePath?.split('/')[0] || 'wybrany'}`
+                    ? `Folder: ${firstFile?.webkitRelativePath?.split('/')[0] || 'wybrany'}`
                     : files[0].name}
                 </p>
                 <p className="mt-1 text-sm font-bold text-[#6e7fa6]">
@@ -224,11 +275,8 @@ export default function StartSessionForm() {
                   lub wybierz folder
                 </span>
                 <input
+                  {...directoryPickerAttributes}
                   type="file"
-                  /* @ts-ignore */
-                  webkitdirectory=""
-                  /* @ts-ignore */
-                  directory=""
                   multiple
                   onChange={handleFileChange}
                   className="hidden"
@@ -254,7 +302,7 @@ export default function StartSessionForm() {
         }`}
       >
         {starting ? <Loader2 className="h-6 w-6 animate-spin" /> : mode === 'notes' ? <FileText className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current" />}
-        {starting ? 'Przygotowywanie...' : mode === 'notes' ? 'Analizuj materiały' : 'Zaczynamy!'}
+        {starting ? 'Przygotowywanie...' : mode === 'notes' ? 'Analizuj materiały' : youtubeUrl ? 'Przygotuj rozmowę' : 'Zaczynamy!'}
       </button>
     </form>
   )
