@@ -209,26 +209,26 @@ export default function BookDetailPage() {
 
               <div className="rounded-[26px] border border-[#dce7f5] bg-white p-5 md:p-6">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="font-display text-3xl leading-none text-[#06296b]">Treść wybranego węzła</h3>
+                  <h3 className="font-display text-4xl leading-none text-[#06296b] md:text-5xl">Treść wybranego węzła</h3>
                   {selectedNodeDetails && (
-                    <span className="rounded-full border border-[#f0edff] bg-[#f6f4ff] px-3 py-1 text-xs font-extrabold text-[#7057ff]">
+                    <span className="rounded-full border border-[#f0edff] bg-[#f6f4ff] px-4 py-1.5 text-sm font-extrabold text-[#7057ff]">
                       {selectedNodeDetails.type}
                     </span>
                   )}
                 </div>
 
                 {!selectedNodeId && (
-                  <p className="mt-4 text-sm font-bold leading-6 text-[#6e7fa6]">
+                  <p className="mt-4 text-base font-bold leading-7 text-[#6e7fa6] md:text-lg">
                     Kliknij pojęcie w grafie, a pod spodem pokażę fragment materiału powiązany z tym węzłem.
                   </p>
                 )}
 
                 {selectedNodeLoading && (
-                  <p className="mt-4 text-sm font-bold text-[#6e7fa6]">Ładuję treść wybranego węzła...</p>
+                  <p className="mt-4 text-base font-bold text-[#6e7fa6] md:text-lg">Ładuję treść wybranego węzła...</p>
                 )}
 
                 {selectedNodeError && (
-                  <p className="mt-4 rounded-2xl border border-[#ffd3cf] bg-[#fff0ef] px-4 py-3 text-sm font-bold text-[#d8342b]">
+                  <p className="mt-4 rounded-2xl border border-[#ffd3cf] bg-[#fff0ef] px-4 py-3 text-base font-bold text-[#d8342b] md:text-lg">
                     {selectedNodeError}
                   </p>
                 )}
@@ -236,9 +236,9 @@ export default function BookDetailPage() {
                 {selectedNodeDetails && !selectedNodeLoading && (
                   <div className="mt-5 grid gap-5">
                     <div>
-                      <p className="text-lg font-extrabold text-[#06296b]">{selectedNodeDetails.label}</p>
+                      <p className="text-2xl font-extrabold text-[#06296b] md:text-3xl">{selectedNodeDetails.label}</p>
                       <div className="mt-3 rounded-[22px] bg-[#fffefb] p-4">
-                        <p className="whitespace-pre-wrap text-sm font-bold leading-7 text-[#33456b]">
+                        <p className="whitespace-pre-wrap text-base font-bold leading-8 text-[#33456b] md:text-lg md:leading-9">
                           {selectedNodeDetails.content || 'Ten węzeł nie ma jeszcze przypisanego fragmentu źródłowego.'}
                         </p>
                       </div>
@@ -246,7 +246,7 @@ export default function BookDetailPage() {
 
                     {selectedNodeDetails.related.length > 0 && (
                       <div>
-                        <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-[#6e7fa6]">
+                        <p className="text-base font-extrabold uppercase tracking-[0.16em] text-[#6e7fa6]">
                           Powiązania
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -255,7 +255,7 @@ export default function BookDetailPage() {
                               key={`${item.direction}-${item.id}-${item.relation}`}
                               type="button"
                               onClick={() => setSelectedNodeId(item.id)}
-                              className="rounded-2xl border border-[#dce7f5] bg-[#fffefb] px-3 py-2 text-left text-xs font-bold text-[#06296b] transition-colors hover:border-[#7057ff] hover:bg-[#f6f4ff]"
+                              className="rounded-2xl border border-[#dce7f5] bg-[#fffefb] px-4 py-3 text-left text-sm font-bold text-[#06296b] transition-colors hover:border-[#7057ff] hover:bg-[#f6f4ff] md:text-base"
                             >
                               {item.label} • {item.relation}
                             </button>

@@ -141,9 +141,8 @@ export default function KnowledgeGraph({
         const typesParam = selectedTypes.size > 0
           ? `?types=${Array.from(selectedTypes).join(',')}`
           : ''
-        const highlightParam = highlightNodeId ? `${typesParam ? '&' : '?'}highlight=${highlightNodeId}` : ''
 
-        const res = await fetch(`/api/books/${bookId}/graph${typesParam}${highlightParam}`)
+        const res = await fetch(`/api/books/${bookId}/graph${typesParam}`)
         const graph = await readJsonSafely<{
           nodes?: ApiNode[]
           edges?: ApiEdge[]
@@ -169,7 +168,7 @@ export default function KnowledgeGraph({
         setGenError('')
       } catch {
         if (!cancelled) {
-          setGenError('Nie udało się podświetlić ścieżki dla tego węzła, ale sam graf nadal jest dostępny.')
+          setGenError('Nie udało się odświeżyć danych grafu, ale ostatni poprawny widok nadal jest dostępny.')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -178,7 +177,7 @@ export default function KnowledgeGraph({
 
     void loadGraph()
     return () => { cancelled = true }
-  }, [bookId, selectedTypes, highlightNodeId])
+  }, [bookId, selectedTypes])
 
   const toggleType = useCallback((type: string) => {
     setSelectedTypes(prev => {
@@ -403,9 +402,9 @@ export default function KnowledgeGraph({
           ref={graphRef}
           graphData={data}
           nodeLabel="label"
-          nodeColor="color"
-          linkColor={(link: ApiEdge) => link.highlighted ? '#ffb84d' : (edgeColors[link.type] || '#dce7f5')}
-          linkWidth={(link: ApiEdge) => link.highlighted ? 3 : Math.max(1.5, (link.weight || 0.6) * 3)}
+          nodeColor={(node: GraphNode) => highlightNodeId === node.id ? '#ffb84d' : node.color}
+          linkColor={(link: ApiEdge) => edgeColors[link.type] || '#dce7f5'}
+          linkWidth={(link: ApiEdge) => Math.max(1.5, (link.weight || 0.6) * 3)}
           nodeRelSize={7}
           onNodeClick={handleNodeClick}
           width={dims.width}

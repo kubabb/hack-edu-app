@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Loader2, Brain, ChevronRight, ChevronDown } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { Loader2, Brain, ChevronRight, ChevronDown, BookOpen, Network, Sparkles, StickyNote, FileText } from 'lucide-react'
 import { readJsonSafely } from '@/src/lib/http/json'
 
 interface TreeNode {
@@ -12,22 +13,106 @@ interface TreeNode {
   children: TreeNode[]
 }
 
-const typeStyles: Record<string, { bg: string; text: string; border: string }> = {
-  root: { bg: '#06296b', text: '#ffffff', border: '#06296b' },
-  CHAPTER: { bg: '#7057ff', text: '#ffffff', border: '#7057ff' },
-  SECTION: { bg: '#f0edff', text: '#7057ff', border: '#7057ff' },
-  CONCEPT: { bg: '#20b981', text: '#ffffff', border: '#20b981' },
-  TASK: { bg: '#ff5144', text: '#ffffff', border: '#ff5144' },
-  EXAMPLE: { bg: '#ffb84d', text: '#06296b', border: '#ffb84d' },
+interface TreeResponse {
+  tree?: TreeNode
+  error?: string
 }
 
-const typeIcons: Record<string, string> = {
-  CHAPTER: '📑',
-  SECTION: '📄',
-  CONCEPT: '💡',
-  TASK: '✏️',
-  EXAMPLE: '📝',
-  root: '📚',
+const typeStyles: Record<
+  string,
+  {
+    bg: string
+    text: string
+    border: string
+    shadow: string
+    iconBg: string
+    iconColor: string
+    badgeBg: string
+    badgeText: string
+    icon: LucideIcon
+  }
+> = {
+  root: {
+    bg: '#fff8eb',
+    text: '#06296b',
+    border: '#f6dec0',
+    shadow: '0 10px 24px rgba(6, 41, 107, 0.08)',
+    iconBg: '#fff4cf',
+    iconColor: '#ff5144',
+    badgeBg: '#ffffff',
+    badgeText: '#8d6d3e',
+    icon: BookOpen,
+  },
+  CHAPTER: {
+    bg: '#f7f4ff',
+    text: '#5f48d7',
+    border: '#ddd3ff',
+    shadow: '0 8px 20px rgba(112, 87, 255, 0.08)',
+    iconBg: '#efeaff',
+    iconColor: '#7057ff',
+    badgeBg: '#ffffff',
+    badgeText: '#7057ff',
+    icon: Brain,
+  },
+  SECTION: {
+    bg: '#fffefb',
+    text: '#35507f',
+    border: '#dce7f5',
+    shadow: '0 8px 18px rgba(6, 41, 107, 0.05)',
+    iconBg: '#f3f6ff',
+    iconColor: '#6e7fa6',
+    badgeBg: '#f7f9fc',
+    badgeText: '#6e7fa6',
+    icon: FileText,
+  },
+  CONCEPT: {
+    bg: '#eefaf5',
+    text: '#11805e',
+    border: '#cfeedd',
+    shadow: '0 8px 18px rgba(32, 185, 129, 0.08)',
+    iconBg: '#e3f7ee',
+    iconColor: '#20b981',
+    badgeBg: '#ffffff',
+    badgeText: '#11805e',
+    icon: Sparkles,
+  },
+  TASK: {
+    bg: '#fff4ef',
+    text: '#d8342b',
+    border: '#ffd8d2',
+    shadow: '0 8px 18px rgba(255, 81, 68, 0.08)',
+    iconBg: '#ffe8e3',
+    iconColor: '#ff5144',
+    badgeBg: '#ffffff',
+    badgeText: '#d8342b',
+    icon: StickyNote,
+  },
+  EXAMPLE: {
+    bg: '#fff8eb',
+    text: '#b85a00',
+    border: '#ffe3b9',
+    shadow: '0 8px 18px rgba(255, 184, 77, 0.08)',
+    iconBg: '#fff0cf',
+    iconColor: '#ffb84d',
+    badgeBg: '#ffffff',
+    badgeText: '#b85a00',
+    icon: Network,
+  },
+}
+
+function expandInitialTree(node: TreeNode, ids: Set<string>, depth: number) {
+  if (depth <= 2) {
+    ids.add(node.id)
+    for (const child of node.children) {
+      expandInitialTree(child, ids, depth + 1)
+    }
+  }
+}
+
+async function fetchMindMapTree(sessionId: string) {
+  const res = await fetch(`/api/sessions/${sessionId}/mindmap`)
+  const data = await readJsonSafely<TreeNode>(res)
+  return data
 }
 
 export default function MindMap({ sessionId }: { sessionId: string }) {
@@ -37,61 +122,52 @@ export default function MindMap({ sessionId }: { sessionId: string }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
 
-  async function loadTree() {
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch(`/api/sessions/${sessionId}/mindmap`)
-      const data = await readJsonSafely<TreeNode>(res)
-      setTree(data)
-      const expandedIds = new Set<string>()
-      if (data) expandInitial(data, expandedIds, 0)
-      setExpanded(expandedIds)
-    } catch {
-      setTree(null)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   async function generateAI() {
     setGenerating(true)
     setError('')
     try {
       const res = await fetch(`/api/sessions/${sessionId}/mindmap/generate`, { method: 'POST' })
-      const data = await res.json()
+      const data = await readJsonSafely<TreeResponse>(res)
       if (!res.ok) throw new Error(data?.error || 'Błąd generowania')
       if (data.tree) {
         setTree(data.tree)
         const expandedIds = new Set<string>()
-        expandInitial(data.tree, expandedIds, 0)
+        expandInitialTree(data.tree, expandedIds, 0)
         setExpanded(expandedIds)
       }
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Błąd generowania')
     } finally {
       setGenerating(false)
     }
   }
 
   useEffect(() => {
-    let cancelled = false
-    async function init() {
-      await loadTree()
-      if (cancelled) return
-    }
-    init()
-    return () => { cancelled = true }
-  }, [sessionId])
+    let active = true
 
-  function expandInitial(node: TreeNode, ids: Set<string>, depth: number) {
-    if (depth <= 2) {
-      ids.add(node.id)
-      for (const child of node.children) {
-        expandInitial(child, ids, depth + 1)
+    void (async () => {
+      try {
+        const data = await fetchMindMapTree(sessionId)
+        if (!active) return
+        setTree(data)
+        setError('')
+        const expandedIds = new Set<string>()
+        if (data) expandInitialTree(data, expandedIds, 0)
+        setExpanded(expandedIds)
+      } catch {
+        if (!active) return
+        setTree(null)
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
       }
+    })()
+
+    return () => {
+      active = false
     }
-  }
+  }, [sessionId])
 
   const toggleExpand = useCallback((id: string) => {
     setExpanded(prev => {
@@ -146,29 +222,31 @@ export default function MindMap({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="rounded-[32px] bg-[#fffefb] p-6 overflow-auto max-h-[70vh]">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#dce7f5] bg-[#f0edff] px-4 py-2 text-sm font-extrabold text-[#7057ff]">
-          <Brain className="h-4 w-4" />
+    <div className="max-h-[70vh] overflow-auto rounded-[32px] bg-[#fffefb] p-5 md:p-6">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex items-center gap-2 rounded-full border border-[#dce7f5] bg-[#f7f4ff] px-4 py-2 text-sm font-extrabold text-[#7057ff]">
+          <Brain className="h-4 w-4" strokeWidth={2.4} />
           Mapa myśli
         </div>
         <button
           onClick={generateAI}
           disabled={generating}
-          className="inline-flex items-center gap-1 rounded-xl bg-[#eafff4] px-3 py-2 text-xs font-bold text-[#11805e] hover:bg-[#d4f5e6] disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-full border border-[#d7efe5] bg-[#f3fbf8] px-4 py-2 text-xs font-bold text-[#11805e] transition-colors hover:bg-[#ebf8f3] disabled:opacity-50"
         >
           <Loader2 className={`h-3 w-3 ${generating ? 'animate-spin' : 'hidden'}`} />
-          <Brain className={`h-3 w-3 ${generating ? 'hidden' : ''}`} />
+          <Brain className={`h-3 w-3 ${generating ? 'hidden' : ''}`} strokeWidth={2.4} />
           Regeneruj AI
         </button>
       </div>
-      <MindMapNodeItem
-        node={tree}
-        expanded={expanded}
-        onToggle={toggleExpand}
-        depth={0}
-        isRoot
-      />
+      <div className="rounded-[28px] border border-[#eef2f7] bg-[linear-gradient(180deg,#fffefb_0%,#fcfdff_100%)] p-4 md:p-5">
+        <MindMapNodeItem
+          node={tree}
+          expanded={expanded}
+          onToggle={toggleExpand}
+          depth={0}
+          isRoot
+        />
+      </div>
     </div>
   )
 }
@@ -189,39 +267,57 @@ function MindMapNodeItem({
   const isExpanded = expanded.has(node.id)
   const hasChildren = node.children.length > 0
   const style = typeStyles[node.type] || typeStyles.SECTION
-  const icon = typeIcons[node.type] || '📄'
+  const Icon = style.icon
+  const typeLabel = node.type === 'root' ? 'TEMAT GLOWNY' : node.type.replace('_', ' ')
 
   return (
-    <div className="ml-0">
+    <div className="relative ml-0">
+      {!isRoot && (
+        <div
+          className="absolute top-0 bottom-0 w-px rounded-full bg-[#e9edf5]"
+          style={{ left: `${depth * 26 - 12}px` }}
+        />
+      )}
       <div
-        className={`flex items-center gap-3 rounded-2xl px-4 py-3 mb-2 transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-md ${
-          isRoot ? 'text-lg' : 'text-sm'
+        className={`mb-3 flex cursor-pointer items-center gap-3 rounded-[24px] px-4 py-3.5 transition-all hover:-translate-y-0.5 ${
+          isRoot ? 'text-lg md:text-xl' : 'text-sm md:text-[15px]'
         }`}
         style={{
           backgroundColor: style.bg,
           color: style.text,
-          border: `2px solid ${style.border}`,
-          marginLeft: `${depth * 28}px`,
-          maxWidth: `calc(100% - ${depth * 28}px)`,
+          border: `1px solid ${style.border}`,
+          boxShadow: style.shadow,
+          marginLeft: `${depth * 26}px`,
+          maxWidth: `calc(100% - ${depth * 26}px)`,
         }}
         onClick={() => hasChildren && onToggle(node.id)}
       >
-        {hasChildren ? (
-          isExpanded ? (
-            <ChevronDown className="h-4 w-4 flex-shrink-0" />
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[16px]"
+          style={{ backgroundColor: style.iconBg, color: style.iconColor }}
+        >
+          {hasChildren ? (
+            isExpanded ? (
+              <ChevronDown className="h-4 w-4" strokeWidth={2.6} />
+            ) : (
+              <ChevronRight className="h-4 w-4" strokeWidth={2.6} />
+            )
           ) : (
-            <ChevronRight className="h-4 w-4 flex-shrink-0" />
-          )
-        ) : (
-          <span className="w-4 flex-shrink-0 text-center">{icon}</span>
+            <Icon className="h-4 w-4" strokeWidth={2.4} />
+          )}
+        </div>
+        <span className="flex-1 font-extrabold leading-tight">{node.label}</span>
+        {!isRoot && (
+          <span
+            className="rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em]"
+            style={{ backgroundColor: style.badgeBg, color: style.badgeText }}
+          >
+            {typeLabel}
+          </span>
         )}
-        <span className="font-bold leading-tight flex-1">{node.label}</span>
-        <span className="text-xs opacity-70 font-medium uppercase tracking-wider">
-          {node.type === 'root' ? '' : node.type}
-        </span>
       </div>
       {hasChildren && isExpanded && (
-        <div>
+        <div className="pb-1">
           {node.children.map((child) => (
             <MindMapNodeItem
               key={child.id}
