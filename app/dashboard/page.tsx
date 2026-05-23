@@ -82,7 +82,7 @@ export default function DashboardPage() {
                 sessions.slice(0, 5).map((session) => (
                   <Link
                     key={session.id}
-                    href={session.summary ? `/dashboard/summary/${session.id}` : `/dashboard/session/${session.id}`}
+                    href={`/dashboard/books/${session.id}${session.summary ? '?tab=notes' : ''}`}
                     className="group flex items-center justify-between rounded-2xl border border-[#dce7f5] bg-white p-4 transition-transform hover:-translate-y-1 hover:border-[#7057ff] hover:shadow-sm"
                   >
                     <div className="flex items-center gap-4">

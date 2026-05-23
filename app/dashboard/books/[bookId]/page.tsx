@@ -158,7 +158,7 @@ export default function BookDetailPage() {
           )}
 
           {activeTab === 'notes' && (
-            <NotesPanel sessionId={bookId} />
+            <NotesPanel sessionId={bookId} onOpenChat={() => setActiveTab('chat')} />
           )}
         </div>
       </section>

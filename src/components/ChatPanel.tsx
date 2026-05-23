@@ -60,10 +60,17 @@ export default function ChatPanel({
       const data = await readJsonSafely<{
         sessionId?: string
         assistantMessage?: unknown
-        error?: string
+        error?: unknown
       }>(res)
 
-      if (!res.ok) throw new Error(data?.error || 'Nie udało się wysłać wiadomości')
+      if (!res.ok) {
+        const errMsg = typeof data?.error === 'string'
+          ? data.error
+          : typeof data?.error === 'object' && data?.error !== null
+            ? JSON.stringify(data.error)
+            : 'Nie udało się wysłać wiadomości'
+        throw new Error(errMsg)
+      }
       if (data?.sessionId) setSessionId(data.sessionId)
 
       const assistantMessage = isMessage(data?.assistantMessage)

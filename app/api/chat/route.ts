@@ -13,9 +13,10 @@ import { SessionChunkRepository } from '@/src/server/repositories/SessionChunkRe
 import { z } from 'zod';
 
 const chatSchema = z.object({
-  bookId: z.string(), // frontend wysyła to jako bookId dla kompatybilności, ale jest to sessionId
+  sessionId: z.string().nullable().optional(), // może być null (pierwszy render)
+  bookId: z.string().nullable().optional(),    
   message: z.string().min(1),
-  selectedNodeId: z.string().optional(),
+  selectedNodeId: z.string().nullable().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -25,9 +26,14 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const parsed = chatSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid request: ' + parsed.error.issues.map(i => i.message).join(', ') }, { status: 400 });
 
-    const { bookId, message, selectedNodeId } = parsed.data;
+    const { message, selectedNodeId } = parsed.data;
+    // bookId and sessionId are the same — session ID from URL
+    const activeSessionId = parsed.data.bookId || parsed.data.sessionId;
+    if (!activeSessionId) {
+      return NextResponse.json({ error: 'Brak ID sesji. Odśwież stronę i spróbuj ponownie.' }, { status: 400 });
+    }
 
     const sessionRepo = new LearningSessionRepository(prisma);
     const messageRepo = new ChatMessageRepository(prisma);
@@ -38,9 +44,6 @@ export async function POST(req: NextRequest) {
     const knowledgeQueryService = new KnowledgeQueryService(embeddingAdapter, embeddingRepo, nodeRepo, chunkRepo);
     const llmAdapter = new OpenAILlmAdapter(process.env.OPENAI_API_KEY || '');
     const tutoringService = new TutoringService(sessionRepo, messageRepo, knowledgeQueryService, llmAdapter);
-
-    // activeSessionId to po prostu podane id wejściowe (LearningSession)
-    const activeSessionId = bookId;
 
     const result = await tutoringService.handleUserMessage(activeSessionId, message, selectedNodeId);
 

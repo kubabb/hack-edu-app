@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { File, Loader2, MessageCircle, FileText, Play, Upload, X } from 'lucide-react'
+import { File, FolderOpen, Loader2, MessageCircle, FileText, Play, Upload, X } from 'lucide-react'
 import { readJsonSafely } from '@/src/lib/http/json'
 import { useRouter } from 'next/navigation'
 
@@ -15,16 +15,28 @@ function getErrorMessage(error: unknown) {
 export default function StartSessionForm() {
   const router = useRouter()
   const [topic, setTopic] = useState('')
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
   const [mode, setMode] = useState<SessionMode>('chat')
 
-  const pickFile = useCallback(
-    (nextFile: File) => {
-      setFile(nextFile)
-      if (!topic) setTopic(nextFile.name.replace(/\.[^/.]+$/, ''))
+  const pickFiles = useCallback(
+    (newFiles: FileList | File[]) => {
+      const arr = Array.from(newFiles)
+      setFiles(arr)
+      if (!topic && arr.length > 0) {
+        // Use first file name or folder name as topic
+        const firstName = arr[0].name.replace(/\.[^/.]+$/, '')
+        // If it's a folder upload, use directory name
+        const relativePath = (arr[0] as any).webkitRelativePath
+        if (relativePath) {
+          const dirName = relativePath.split('/')[0]
+          setTopic(dirName)
+        } else {
+          setTopic(firstName)
+        }
+      }
     },
     [topic],
   )
@@ -33,16 +45,21 @@ export default function StartSessionForm() {
     (e: React.DragEvent) => {
       e.preventDefault()
       setDragOver(false)
-      const nextFile = e.dataTransfer.files[0]
-      if (nextFile) pickFile(nextFile)
+      if (e.dataTransfer.files.length > 0) {
+        pickFiles(e.dataTransfer.files)
+      }
     },
-    [pickFile],
+    [pickFiles],
   )
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextFile = e.target.files?.[0]
-    if (nextFile) pickFile(nextFile)
+    if (e.target.files && e.target.files.length > 0) {
+      pickFiles(e.target.files)
+    }
   }
+
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0)
+  const isFolder = files.length > 1 || !!(files[0] as any)?.webkitRelativePath
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -57,8 +74,8 @@ export default function StartSessionForm() {
     const formData = new FormData()
     formData.append('title', topic.trim())
     formData.append('mode', mode)
-    if (file) {
-      formData.append('file', file)
+    for (const f of files) {
+      formData.append('file', f)
     }
 
     try {
@@ -72,10 +89,8 @@ export default function StartSessionForm() {
 
       if (data?.sessionId) {
         if (mode === 'notes') {
-          // Tryb notatek: przekieruj do widoku materiału z zakładką notatek
           router.push(`/dashboard/books/${data.sessionId}?tab=notes`)
         } else {
-          // Tryb rozmowy: LiveAvatar
           router.push(`/dashboard/session/${data.sessionId}`)
         }
       }
@@ -139,7 +154,9 @@ export default function StartSessionForm() {
 
       <div className="grid gap-2">
         <span className="text-sm font-extrabold text-[#6e7fa6]">
-          {mode === 'chat' ? 'Masz notatki? Opcjonalnie wgraj plik PDF:' : 'Wgraj plik PDF do analizy:'}
+          {mode === 'chat'
+            ? 'Masz notatki? Opcjonalnie wgraj PDF, Markdown, TXT lub folder:'
+            : 'Wgraj pliki (PDF, MD, TXT) lub cały folder:'}
         </span>
         <div
           onDragOver={(e) => {
@@ -152,36 +169,72 @@ export default function StartSessionForm() {
             dragOver ? 'border-[#7057ff] bg-[#f0edff]' : 'border-[#dce7f5] bg-[#fffefb]'
           }`}
         >
-          {file ? (
+          {files.length > 0 ? (
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:text-left">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#fff4cf] text-[#ff5144]">
-                <File className="h-7 w-7" strokeWidth={2.7} />
+                {isFolder ? (
+                  <FolderOpen className="h-7 w-7" strokeWidth={2.7} />
+                ) : (
+                  <File className="h-7 w-7" strokeWidth={2.7} />
+                )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-extrabold text-[#06296b]">{file.name}</p>
+                <p className="truncate text-base font-extrabold text-[#06296b]">
+                  {isFolder
+                    ? `Folder: ${(files[0] as any).webkitRelativePath?.split('/')[0] || 'wybrany'}`
+                    : files[0].name}
+                </p>
                 <p className="mt-1 text-sm font-bold text-[#6e7fa6]">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB, gotowe
+                  {files.length > 1
+                    ? `${files.length} plików, ${(totalSize / 1024 / 1024).toFixed(2)} MB`
+                    : `${(totalSize / 1024 / 1024).toFixed(2)} MB, gotowe`}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setFile(null)}
-                aria-label="Usuń plik"
+                onClick={() => setFiles([])}
+                aria-label="Usuń pliki"
                 className="rounded-2xl bg-[#fff0ef] p-3 text-[#d8342b]"
               >
                 <X className="h-5 w-5" strokeWidth={2.7} />
               </button>
             </div>
           ) : (
-            <label className="block cursor-pointer">
-              <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[20px] bg-[#eafff4] text-[#11805e]">
-                <Upload className="h-6 w-6" strokeWidth={2.7} />
-              </span>
-              <span className="block text-base font-extrabold text-[#06296b]">
-                Przeciągnij plik albo kliknij
-              </span>
-              <input type="file" accept=".pdf,image/*" onChange={handleFileChange} className="hidden" />
-            </label>
+            <div className="flex flex-col items-center gap-3">
+              <label className="block cursor-pointer">
+                <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[20px] bg-[#eafff4] text-[#11805e]">
+                  <Upload className="h-6 w-6" strokeWidth={2.7} />
+                </span>
+                <span className="block text-base font-extrabold text-[#06296b]">
+                  Przeciągnij pliki albo kliknij
+                </span>
+                <input
+                  type="file"
+                  accept=".pdf,.md,.txt,image/*"
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+              <label className="block cursor-pointer">
+                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-[16px] bg-[#fff4cf] text-[#ff5144]">
+                  <FolderOpen className="h-5 w-5" strokeWidth={2.7} />
+                </span>
+                <span className="block text-sm font-bold text-[#6e7fa6]">
+                  lub wybierz folder
+                </span>
+                <input
+                  type="file"
+                  /* @ts-ignore */
+                  webkitdirectory=""
+                  /* @ts-ignore */
+                  directory=""
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
           )}
         </div>
       </div>
@@ -201,7 +254,7 @@ export default function StartSessionForm() {
         }`}
       >
         {starting ? <Loader2 className="h-6 w-6 animate-spin" /> : mode === 'notes' ? <FileText className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current" />}
-        {starting ? 'Przygotowywanie...' : mode === 'notes' ? 'Analizuj materiał' : 'Zaczynamy!'}
+        {starting ? 'Przygotowywanie...' : mode === 'notes' ? 'Analizuj materiały' : 'Zaczynamy!'}
       </button>
     </form>
   )

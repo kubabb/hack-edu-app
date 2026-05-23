@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/src/server/prisma';
 import OpenAI from 'openai';
+import { createOpenAIClient, resolveModel } from '@/src/server/lib/openai-client';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (conversationText.trim().length > 0) {
       const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: resolveModel('gpt-4o-mini', process.env.OPENAI_API_KEY || ''),
         messages: [
           { role: 'system', content: 'Jesteś asystentem edukacyjnym. Użytkownik właśnie zakończył interaktywną lekcję z wirtualnym korepetytorem. Twoim zadaniem jest stworzyć krótkie, rzeczowe i zachęcające podsumowanie (notatkę) z tej lekcji na podstawie historii czatu. Wypisz główne pojęcia, które były omawiane. Formatuj w Markdown, użyj punktatorów.' },
           { role: 'user', content: `Oto historia czatu:\n\n${conversationText}` }

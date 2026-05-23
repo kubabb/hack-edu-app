@@ -3,12 +3,11 @@ import { auth } from '@/auth';
 import { prisma } from '@/src/server/prisma';
 import { FlashcardRepository } from '@/src/server/repositories/FlashcardRepository';
 import { KnowledgeQueryService } from '@/src/server/services/KnowledgeQueryService';
-import { OpenAILlmAdapter } from '@/src/server/adapters/OpenAILlmAdapter';
 import { OpenAIEmbeddingAdapter } from '@/src/server/adapters/OpenAIEmbeddingAdapter';
 import { EmbeddingRepository } from '@/src/server/repositories/EmbeddingRepository';
 import { GraphNodeRepository } from '@/src/server/repositories/GraphNodeRepository';
 import { SessionChunkRepository } from '@/src/server/repositories/SessionChunkRepository';
-import OpenAI from 'openai';
+import { createOpenAIClient, resolveModel } from '@/src/server/lib/openai-client';
 import { z } from 'zod';
 
 const FlashcardsPostSchema = z.object({
@@ -17,6 +16,38 @@ const FlashcardsPostSchema = z.object({
   save: z.boolean().optional().default(true),
 });
 
+// Extract JSON from LLM responses that may wrap it in markdown or have extra text
+function extractFlashcardsJson(text: string): any[] {
+  // Try direct parse first
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed.flashcards) return parsed.flashcards;
+    if (Array.isArray(parsed)) return parsed;
+    return [];
+  } catch {}
+
+  // Try extracting from markdown code blocks
+  const jsonBlock = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (jsonBlock) {
+    try {
+      const parsed = JSON.parse(jsonBlock[1]);
+      if (parsed.flashcards) return parsed.flashcards;
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+  }
+
+  // Try finding JSON object with flashcards key
+  const objMatch = text.match(/\{\s*"flashcards"\s*:\s*\[[\s\S]*?\]\s*\}/);
+  if (objMatch) {
+    try {
+      const parsed = JSON.parse(objMatch[0]);
+      if (parsed.flashcards) return parsed.flashcards;
+    } catch {}
+  }
+
+  return [];
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
@@ -24,14 +55,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
 
-    // Return saved flashcard sets
+    // Return saved flashcard sets with their cards
     const repo = new FlashcardRepository(prisma);
     const sets = await repo.findBySessionId(id);
-    return NextResponse.json({ sets });
+    
+    // Flatten: return first set's cards for backward compat, plus all sets
+    const firstSetCards = sets.length > 0 ? sets[0].cards : [];
+    
+    return NextResponse.json({ flashcards: firstSetCards, sets });
 
   } catch (error: any) {
     console.error('Error fetching flashcards:', error);
-    return NextResponse.json({ error: 'Failed to fetch flashcards' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Failed to fetch flashcards' }, { status: 500 });
   }
 }
 
@@ -43,7 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { id } = await params;
     const body = await req.json();
     const parsed = FlashcardsPostSchema.safeParse(body);
-    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid input: ' + parsed.error.issues.map(i => i.message).join(', ') }, { status: 400 });
 
     const { nodeId, query, save } = parsed.data;
 
@@ -61,7 +96,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const knowledgeService = new KnowledgeQueryService(embeddingAdapter, embeddingRepo, nodeRepo, chunkRepo);
       const chunks = await knowledgeService.getChunksForNode(nodeId);
       contextText = chunks.join('\n\n');
-      title = `Fiszki z węzła`;
+      title = 'Fiszki z węzła';
       sourceType = 'node';
       sourceId = nodeId;
     } else if (query) {
@@ -72,51 +107,62 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const knowledgeService = new KnowledgeQueryService(embeddingAdapter, embeddingRepo, nodeRepo, chunkRepo);
       const chunks = await knowledgeService.getChunksByQuery(id, query, 10);
       contextText = chunks.join('\n\n');
-      title = `Fiszki z pytania: ${query.substring(0, 50)}`;
+      title = `Fiszki: ${query.substring(0, 50)}`;
       sourceType = 'query';
       sourceId = query;
     } else {
-      // Fallback to session summary
-      const learningSession = await prisma.learningSession.findUnique({
-        where: { id },
-        select: { summary: true, topic: true },
-      });
-      if (!learningSession?.summary) {
-        return NextResponse.json({ error: 'Session or summary not found' }, { status: 404 });
+      // Try chunks first, then fallback to summary
+      const chunkRepo = new SessionChunkRepository(prisma);
+      const allChunks = await chunkRepo.findBySessionId(id);
+      if (allChunks.length > 0) {
+        contextText = allChunks.map(c => c.content).join('\n\n');
+        title = 'Fiszki z materiału';
+        sourceType = 'chunks';
+      } else {
+        const learningSession = await prisma.learningSession.findUnique({
+          where: { id },
+          select: { summary: true, topic: true },
+        });
+        if (!learningSession?.summary) {
+          return NextResponse.json({ error: 'Brak materiału do stworzenia fiszek. Najpierw wgraj plik lub wygeneruj notatki.' }, { status: 400 });
+        }
+        contextText = learningSession.summary;
+        title = `Fiszki: ${learningSession.topic || 'Sesja'}`;
       }
-      contextText = learningSession.summary;
-      title = `Fiszki: ${learningSession.topic || 'Sesja'}`;
+    }
+
+    if (!contextText.trim()) {
+      return NextResponse.json({ error: 'Brak tekstu do wygenerowania fiszek.' }, { status: 400 });
     }
 
     // Generate flashcards with LLM
     const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
 
-    const prompt = `
-      Jesteś ekspertem edukacyjnym. Poniżej znajduje się materiał edukacyjny. 
-      Na jego podstawie stwórz od 5 do 10 najważniejszych fiszek (pytanie i krótka odpowiedź) pozwalających utrwalić wiedzę.
-      
-      Zwróć wynik w formacie JSON z kluczem "flashcards", który jest tablicą obiektów z kluczami "question" i "answer".
-      
-      Materiał:
-      ${contextText.substring(0, 8000)}
-    `;
+    const systemPrompt = `Jesteś ekspertem edukacyjnym. Tworzysz fiszki na podstawie materiału.
+ZWRÓĆ WYNIK W FORMACIE JSON: {"flashcards": [{"question": "...", "answer": "..."}]}
+Stwórz 5-8 fiszek. Każda fiszka ma pole "question" (pytanie) i "answer" (krótka, rzeczowa odpowiedź).
+ODPOWIEDZ TYLKO JSON-em, bez żadnego dodatkowego tekstu.`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const completion = await openai.chat.completions.create({
+      model: resolveModel('gpt-4o-mini', process.env.OPENAI_API_KEY || ''),
       messages: [
-        { role: 'system', content: 'You are a helpful educational assistant that always outputs valid JSON.' },
-        { role: 'user', content: prompt },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Stwórz fiszki z poniższego materiału:\n\n${contextText.substring(0, 12000)}` },
       ],
-      response_format: { type: 'json_object' },
+      temperature: 0.3,
+      max_completion_tokens: 3000,
     });
 
-    const content = response.choices[0]?.message?.content;
+    const content = completion.choices[0]?.message?.content;
     if (!content) {
-      throw new Error('No content generated by LLM');
+      throw new Error('LLM nie zwrócił odpowiedzi');
     }
 
-    const parsed_result = JSON.parse(content);
-    const cards = parsed_result.flashcards || [];
+    const cards = extractFlashcardsJson(content);
+
+    if (cards.length === 0) {
+      throw new Error(`Nie udało się sparsować fiszek z odpowiedzi LLM. Odpowiedź: ${content.substring(0, 200)}`);
+    }
 
     // Save if requested
     let setId: string | undefined;
@@ -134,8 +180,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ flashcards: cards, setId, title });
 
   } catch (error: any) {
-    console.error('Error generating flashcards:', error);
-    return NextResponse.json({ error: 'Failed to generate flashcards' }, { status: 500 });
+    console.error('Error generating flashcards:', error?.message || error);
+    return NextResponse.json({ error: error?.message || 'Failed to generate flashcards' }, { status: 500 });
   }
 }
 
@@ -155,6 +201,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   } catch (error: any) {
     console.error('Error deleting flashcard set:', error);
-    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Failed to delete' }, { status: 500 });
   }
 }

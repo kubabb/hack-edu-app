@@ -1,10 +1,12 @@
 import { LlmAdapter, LlmPrompt, LlmResponse } from './LlmAdapter';
-import { createOpenAIClient } from '../lib/openai-client';
+import { createOpenAIClient, resolveModel } from '../lib/openai-client';
 
 export class OpenAILlmAdapter implements LlmAdapter {
   private client: ReturnType<typeof createOpenAIClient>;
+  private apiKey: string;
 
   constructor(apiKey: string) {
+    this.apiKey = apiKey;
     this.client = createOpenAIClient(apiKey);
   }
 
@@ -20,7 +22,7 @@ export class OpenAILlmAdapter implements LlmAdapter {
     }
 
     const response = await this.client.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: resolveModel('gpt-4o-mini', this.apiKey),
       messages,
       temperature: 0.7,
       max_completion_tokens: 2000,

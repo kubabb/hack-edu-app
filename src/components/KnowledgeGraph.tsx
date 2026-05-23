@@ -58,6 +58,8 @@ export default function KnowledgeGraph({
 }) {
   const [data, setData] = useState<GraphData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState('')
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [highlightNodeId, setHighlightNodeId] = useState<string | null>(null)
@@ -65,6 +67,29 @@ export default function KnowledgeGraph({
   const graphRef = useRef<any>(null)
   const [dims, setDims] = useState({ width: 800, height: 600 })
   const [showFilters, setShowFilters] = useState(false)
+
+  async function generateAI() {
+    setGenerating(true)
+    setGenError('')
+    try {
+      const res = await fetch(`/api/sessions/${bookId}/graph/enrich`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Błąd generowania')
+      if (data.graph) {
+        const nodes: GraphNode[] = (data.graph.nodes || []).map((n: any) => ({
+          ...n,
+          color: typeColors[n.type] || '#6e7fa6',
+        }))
+        const links = data.graph.edges || []
+        setData({ nodes, links })
+        setGenError('')
+      }
+    } catch (e: any) {
+      setGenError(e.message)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   useEffect(() => {
     const container = containerRef.current
@@ -195,6 +220,16 @@ export default function KnowledgeGraph({
     )
   }
 
+  if (generating) {
+    return (
+      <div ref={containerRef} className="flex h-full flex-col items-center justify-center rounded-[26px] bg-[#fffefb] text-center">
+        <Loader2 className="mx-auto h-10 w-10 animate-spin text-[#20b981]" />
+        <p className="mt-3 text-sm font-extrabold text-[#6e7fa6]">AI generuje graf wiedzy...</p>
+        <p className="mt-2 text-xs text-[#a5b1ca]">To może potrwać do 15 sekund</p>
+      </div>
+    )
+  }
+
   if (!data || data.nodes.length === 0) {
     return (
       <div ref={containerRef} className="flex h-full flex-col items-center justify-center rounded-[26px] bg-[#fffefb] text-center">
@@ -203,9 +238,18 @@ export default function KnowledgeGraph({
         </div>
         <p className="font-display text-3xl leading-none text-[#06296b]">Graf wiedzy jest pusty</p>
         <p className="mt-3 max-w-md text-sm font-bold leading-6 text-[#6e7fa6]">
-          Przetwarzanie materiału może potrwać kilka minut. Wróć tu za chwilę, kiedy AI
-          skończy czytać plik.
+          Wygeneruj graf wiedzy za pomocą AI, aby zobaczyć pojęcia i ich powiązania.
         </p>
+        {genError && (
+          <p className="mt-3 rounded-xl bg-[#fff0ef] px-3 py-1 text-sm font-bold text-[#d8342b]">{genError}</p>
+        )}
+        <button
+          onClick={generateAI}
+          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[#7057ff] px-5 py-3 text-sm font-extrabold text-white transition-transform hover:-translate-y-0.5"
+        >
+          <Brain className="h-4 w-4" />
+          Generuj graf AI
+        </button>
       </div>
     )
   }
@@ -262,6 +306,15 @@ export default function KnowledgeGraph({
         )}
 
         {/* Export */}
+        <button
+          onClick={generateAI}
+          disabled={generating}
+          className="flex items-center gap-1 rounded-2xl bg-[#eafff4] text-[#11805e] px-3 py-2 text-sm font-bold shadow-md border border-[#20b981] disabled:opacity-50"
+          title="Generuj graf AI"
+        >
+          <Brain className={`h-4 w-4 ${generating ? 'animate-pulse' : ''}`} />
+          AI
+        </button>
         <button
           onClick={handleExportJSON}
           className="flex items-center gap-1 rounded-2xl bg-white text-[#6e7fa6] px-3 py-2 text-sm font-bold shadow-md border border-[#dce7f5] ml-auto"

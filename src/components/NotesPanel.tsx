@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Loader2, FileText, RefreshCw, AlertCircle } from 'lucide-react'
+import { Loader2, FileText, RefreshCw, AlertCircle, MessageCircle } from 'lucide-react'
 
 interface NotesData {
   id: string
@@ -108,7 +108,7 @@ function renderMarkdown(text: string): React.ReactNode {
   return <>{elements}</>
 }
 
-export default function NotesPanel({ sessionId }: { sessionId: string }) {
+export default function NotesPanel({ sessionId, onOpenChat }: { sessionId: string; onOpenChat?: () => void }) {
   const [notes, setNotes] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -184,10 +184,21 @@ export default function NotesPanel({ sessionId }: { sessionId: string }) {
   return (
     <div className="rounded-[32px] bg-[#fffefb] p-6 md:p-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="inline-flex items-center gap-2 rounded-full border border-[#dce7f5] bg-[#f0edff] px-4 py-2 text-sm font-extrabold text-[#7057ff]">
-          <FileText className="h-4 w-4" />
-          Notatki AI
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#dce7f5] bg-[#f0edff] px-4 py-2 text-sm font-extrabold text-[#7057ff]">
+            <FileText className="h-4 w-4" />
+            Notatki AI
+          </div>
+          {onOpenChat && (
+            <button
+              onClick={onOpenChat}
+              className="inline-flex items-center gap-2 rounded-full border border-[#7057ff] bg-white px-4 py-2 text-sm font-extrabold text-[#7057ff] transition-all hover:bg-[#f0edff] hover:-translate-y-0.5"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Zapytaj AI
+            </button>
+          )}
         </div>
         <button
           onClick={handleGenerate}

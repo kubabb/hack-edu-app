@@ -33,27 +33,54 @@ const typeIcons: Record<string, string> = {
 export default function MindMap({ sessionId }: { sessionId: string }) {
   const [tree, setTree] = useState<TreeNode | null>(null)
   const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [error, setError] = useState('')
+
+  async function loadTree() {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/mindmap`)
+      const data = await readJsonSafely<TreeNode>(res)
+      setTree(data)
+      const expandedIds = new Set<string>()
+      if (data) expandInitial(data, expandedIds, 0)
+      setExpanded(expandedIds)
+    } catch {
+      setTree(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function generateAI() {
+    setGenerating(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/mindmap/generate`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Błąd generowania')
+      if (data.tree) {
+        setTree(data.tree)
+        const expandedIds = new Set<string>()
+        expandInitial(data.tree, expandedIds, 0)
+        setExpanded(expandedIds)
+      }
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
-      try {
-        const res = await fetch(`/api/sessions/${sessionId}/mindmap`)
-        const data = await readJsonSafely<TreeNode>(res)
-        if (cancelled) return
-        setTree(data)
-        // Expand first two levels by default
-        const expandedIds = new Set<string>()
-        if (data) expandInitial(data, expandedIds, 0)
-        setExpanded(expandedIds)
-      } catch {
-        if (!cancelled) setTree(null)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+    async function init() {
+      await loadTree()
+      if (cancelled) return
     }
-    load()
+    init()
     return () => { cancelled = true }
   }, [sessionId])
 
@@ -75,6 +102,16 @@ export default function MindMap({ sessionId }: { sessionId: string }) {
     })
   }, [])
 
+  if (generating) {
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center rounded-[32px] bg-[#fffefb] p-8 text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-[#20b981]" />
+        <p className="mt-4 font-bold text-[#6e7fa6]">AI generuje mapę myśli...</p>
+        <p className="mt-2 text-sm text-[#a5b1ca]">To może potrwać do 15 sekund</p>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center rounded-[32px] bg-[#fffefb] p-8 text-center">
@@ -92,14 +129,39 @@ export default function MindMap({ sessionId }: { sessionId: string }) {
         </div>
         <p className="font-display text-3xl leading-none text-[#06296b]">Mapa myśli jest pusta</p>
         <p className="mt-3 max-w-md text-sm font-bold leading-6 text-[#6e7fa6]">
-          Przetwarzanie materiału może potrwać kilka minut. Wróć tu za chwilę.
+          Wygeneruj mapę myśli za pomocą AI, aby zobaczyć hierarchiczną strukturę materiału.
         </p>
+        {error && (
+          <p className="mt-3 rounded-xl bg-[#fff0ef] px-3 py-1 text-sm font-bold text-[#d8342b]">{error}</p>
+        )}
+        <button
+          onClick={generateAI}
+          className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[#7057ff] px-5 py-3 text-sm font-extrabold text-white transition-transform hover:-translate-y-0.5"
+        >
+          <Brain className="h-4 w-4" />
+          Generuj mapę myśli AI
+        </button>
       </div>
     )
   }
 
   return (
     <div className="rounded-[32px] bg-[#fffefb] p-6 overflow-auto max-h-[70vh]">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="inline-flex items-center gap-2 rounded-full border border-[#dce7f5] bg-[#f0edff] px-4 py-2 text-sm font-extrabold text-[#7057ff]">
+          <Brain className="h-4 w-4" />
+          Mapa myśli
+        </div>
+        <button
+          onClick={generateAI}
+          disabled={generating}
+          className="inline-flex items-center gap-1 rounded-xl bg-[#eafff4] px-3 py-2 text-xs font-bold text-[#11805e] hover:bg-[#d4f5e6] disabled:opacity-50"
+        >
+          <Loader2 className={`h-3 w-3 ${generating ? 'animate-spin' : 'hidden'}`} />
+          <Brain className={`h-3 w-3 ${generating ? 'hidden' : ''}`} />
+          Regeneruj AI
+        </button>
+      </div>
       <MindMapNodeItem
         node={tree}
         expanded={expanded}

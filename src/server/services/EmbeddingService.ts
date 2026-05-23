@@ -13,12 +13,20 @@ export class EmbeddingService {
     const chunks = await this.chunkRepo.findBySessionId(sessionId);
     if (chunks.length === 0) return;
     const texts = chunks.map((c) => c.content);
-    const embeddings = await this.embeddingAdapter.embed(texts);
-    const items = chunks.map((chunk, i) => ({
-      chunkId: chunk.id,
-      vector: new Float32Array(embeddings[i]),
-      provider: 'openai' as const,
-    }));
-    await this.embeddingRepo.batchCreate(items);
+    try {
+      const embeddings = await this.embeddingAdapter.embed(texts);
+      if (!embeddings || embeddings.length === 0) {
+        console.warn('Embedding API returned empty — skipping vector storage');
+        return;
+      }
+      const items = chunks.map((chunk, i) => ({
+        chunkId: chunk.id,
+        vector: new Float32Array(embeddings[i] || []),
+        provider: 'openai' as const,
+      }));
+      await this.embeddingRepo.batchCreate(items);
+    } catch (e) {
+      console.error('Embedding failed (non-critical, continuing):', e?.message || e);
+    }
   }
 }

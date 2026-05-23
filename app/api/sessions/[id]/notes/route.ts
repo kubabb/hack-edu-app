@@ -7,7 +7,7 @@ import { EmbeddingRepository } from '@/src/server/repositories/EmbeddingReposito
 import { GraphNodeRepository } from '@/src/server/repositories/GraphNodeRepository';
 import { SessionChunkRepository } from '@/src/server/repositories/SessionChunkRepository';
 import OpenAI from 'openai';
-import { createOpenAIClient } from '@/src/server/lib/openai-client';
+import { createOpenAIClient, resolveModel } from '@/src/server/lib/openai-client';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -88,7 +88,7 @@ ZASADY:
 10. Bazuj TYLKO na dostarczonym materiale, nie wymyślaj`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: resolveModel('gpt-4o-mini', process.env.OPENAI_API_KEY || ''),
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Stwórz uporządkowane notatki z poniższego materiału:\n\n${contextBlock}` },

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid input: ' + parsed.error.issues.map(i => i.message).join(', ') }, { status: 400 });
 
   const messageRepo = new ChatMessageRepository(prisma);
   const avatarAdapter = new HeyGenAvatarAdapter(process.env.HEYGEN_API_KEY || '');

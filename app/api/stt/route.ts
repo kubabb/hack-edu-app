@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import OpenAI from 'openai';
+import { createOpenAIClient, resolveModel } from '@/src/server/lib/openai-client';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
@@ -30,12 +31,10 @@ export async function POST(req: NextRequest) {
     await writeFile(filePath, buffer);
 
     const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
-      apiKey: process.env.OPENAI_API_KEY,
-    });
 
     const transcription = await openai.audio.transcriptions.create({
       file: createReadStream(filePath) as any,
-      model: 'whisper-1',
+      model: resolveModel('whisper-1', process.env.OPENAI_API_KEY || ''),
       language: 'pl', // ustawiamy język domyślny na polski, żeby lepiej łapał
     });
 
