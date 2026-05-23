@@ -11,6 +11,7 @@ import {
   Menu,
   Shield,
   Sparkles,
+  User
 } from 'lucide-react'
 import { useUser } from '@/src/hooks/useUser'
 import { createClient } from '@/src/lib/supabase/client'
@@ -18,9 +19,13 @@ import { createClient } from '@/src/lib/supabase/client'
 const navItems = [
   { href: '/dashboard', label: 'Pulpit', icon: LayoutDashboard },
   { href: '/dashboard/books', label: 'Materiały', icon: BookOpen },
+  { href: '/dashboard/profile', label: 'Mój Profil', icon: User },
 ]
 
 function isActive(pathname: string, href: string) {
+  if (href === '/dashboard') {
+    return pathname === '/dashboard'
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -44,12 +49,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="font-display text-3xl text-[#06296b]">TutorAI</span>
             <GraduationCap className="h-6 w-6 text-[#20b981]" />
           </Link>
-          <div className="mt-5 rounded-2xl bg-[#fff4cf] p-4">
-            <p className="text-xs font-extrabold uppercase text-[#ff5144]">Aktywna sesja</p>
-            <p className="mt-1 truncate text-sm font-extrabold text-[#06296b]">
-              {user?.name || user?.email || 'Uczeń TutorAI'}
-            </p>
-          </div>
         </div>
 
         <nav className="flex-1 space-y-2 px-4 py-5">
@@ -87,11 +86,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </nav>
 
-        <div className="border-t border-[#e6edf7] p-4">
+        <div className="border-t border-[#e6edf7] p-4 flex flex-col gap-4">
+          <div className="flex items-center gap-3 px-2">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f0edff] text-[#7057ff]">
+              <User className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col overflow-hidden">
+              <span className="truncate text-sm font-extrabold text-[#06296b]">
+                {user?.name || 'Uczeń TutorAI'}
+              </span>
+              <span className="truncate text-xs font-bold text-[#6e7fa6]">
+                {user?.email}
+              </span>
+            </div>
+          </div>
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-2xl bg-[#fff0ef] px-4 py-3 text-sm font-extrabold text-[#d8342b] transition-transform hover:-translate-y-0.5"
+            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#fff0ef] px-4 py-3 text-sm font-extrabold text-[#d8342b] transition-transform hover:-translate-y-0.5"
           >
             <LogOut className="h-5 w-5" strokeWidth={2.7} />
             Wyloguj się
@@ -160,6 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               href="/"
               className="rounded-xl border border-[#dce7f5] bg-white px-4 py-2 text-sm font-extrabold text-[#06296b]"
             >
+              Powrót do strony głównej
             </Link>
           </div>
           {children}
