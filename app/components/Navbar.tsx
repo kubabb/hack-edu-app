@@ -30,8 +30,8 @@ export default function Navbar() {
           }`}
         >
           <a href="#" className="flex items-center gap-2 text-[#06296b]">
-            <span className="font-display text-3xl leading-none">TutorAI</span>
-            <GraduationCap className="h-6 w-6 text-[#20b981]" strokeWidth={2.4} />
+            <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-14 w-auto" />
+            <span className="font-display text-3xl leading-none -mt-2">nastoprocent</span>
           </a>
 
           <div className="hidden items-center rounded-[20px] border border-[#dce7f5] bg-white px-2 py-1.5 shadow-[inset_0_-2px_rgba(6,41,107,0.04)] md:flex">
@@ -82,8 +82,8 @@ export default function Navbar() {
           <div className="cartoon-panel flex min-h-full flex-col rounded-[28px] p-5">
             <div className="flex items-center justify-between">
               <a href="#" className="flex items-center gap-2 text-[#06296b]">
-                <span className="font-display text-3xl">TutorAI</span>
-                <GraduationCap className="h-6 w-6 text-[#20b981]" />
+                <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-14 w-auto" />
+                <span className="font-display text-3xl leading-none -mt-2">nastoprocent</span>
               </a>
               <button
                 type="button"

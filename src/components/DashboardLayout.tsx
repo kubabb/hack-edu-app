@@ -41,8 +41,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="fixed inset-y-4 left-4 z-30 hidden w-72 flex-col overflow-hidden rounded-[28px] border border-[#dfe8f4] bg-[#fffefb] shadow-[0_18px_50px_rgba(6,41,107,0.1)] lg:flex">
         <div className="border-b border-[#e6edf7] px-6 py-6">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="font-display text-3xl text-[#06296b]">TutorAI</span>
-            <GraduationCap className="h-6 w-6 text-[#20b981]" />
+            <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-14 w-auto" />
+            <span className="font-display text-3xl text-[#06296b] -mt-2">nastoprocent</span>
           </Link>
           <div className="mt-5 rounded-2xl bg-[#fff4cf] p-4">
             <p className="text-xs font-extrabold uppercase text-[#ff5144]">Aktywna sesja</p>
@@ -102,8 +102,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-20 border-b border-[#dfe8f4] bg-[#f6f4ef]/85 px-4 py-3 backdrop-blur lg:hidden">
         <div className="cartoon-panel flex items-center justify-between rounded-2xl px-4 py-3">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="font-display text-2xl text-[#06296b]">TutorAI</span>
-            <GraduationCap className="h-5 w-5 text-[#20b981]" />
+            <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-12 w-auto" />
+            <span className="font-display text-2xl text-[#06296b] -mt-1.5">nastoprocent</span>
           </Link>
           <div className="flex items-center gap-2">
             <button
