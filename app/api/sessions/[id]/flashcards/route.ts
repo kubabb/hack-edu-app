@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/src/server/prisma';
+import { FlashcardRepository } from '@/src/server/repositories/FlashcardRepository';
+import { KnowledgeQueryService } from '@/src/server/services/KnowledgeQueryService';
+import { OpenAILlmAdapter } from '@/src/server/adapters/OpenAILlmAdapter';
+import { OpenAIEmbeddingAdapter } from '@/src/server/adapters/OpenAIEmbeddingAdapter';
+import { EmbeddingRepository } from '@/src/server/repositories/EmbeddingRepository';
+import { GraphNodeRepository } from '@/src/server/repositories/GraphNodeRepository';
+import { SessionChunkRepository } from '@/src/server/repositories/SessionChunkRepository';
 import OpenAI from 'openai';
 import { z } from 'zod';
 
-const FlashcardsResponseSchema = z.object({
-  flashcards: z.array(z.object({
-    question: z.string(),
-    answer: z.string()
-  }))
+const FlashcardsPostSchema = z.object({
+  nodeId: z.string().optional(),
+  query: z.string().optional(),
+  save: z.boolean().optional().default(true),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,48 +23,138 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    
-    // Fetch the session and its summary
-    const learningSession = await prisma.learningSession.findUnique({
-      where: { id },
-      select: { summary: true }
-    });
 
-    if (!learningSession || !learningSession.summary) {
-      return NextResponse.json({ error: 'Session or summary not found' }, { status: 404 });
+    // Return saved flashcard sets
+    const repo = new FlashcardRepository(prisma);
+    const sets = await repo.findBySessionId(id);
+    return NextResponse.json({ sets });
+
+  } catch (error: any) {
+    console.error('Error fetching flashcards:', error);
+    return NextResponse.json({ error: 'Failed to fetch flashcards' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { id } = await params;
+    const body = await req.json();
+    const parsed = FlashcardsPostSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+    const { nodeId, query, save } = parsed.data;
+
+    // Get context based on source
+    let contextText = '';
+    let title = 'Fiszki';
+    let sourceType = 'summary';
+    let sourceId: string | undefined;
+
+    if (nodeId) {
+      const embeddingAdapter = new OpenAIEmbeddingAdapter(process.env.OPENAI_API_KEY || '');
+      const embeddingRepo = new EmbeddingRepository(prisma);
+      const nodeRepo = new GraphNodeRepository(prisma);
+      const chunkRepo = new SessionChunkRepository(prisma);
+      const knowledgeService = new KnowledgeQueryService(embeddingAdapter, embeddingRepo, nodeRepo, chunkRepo);
+      const chunks = await knowledgeService.getChunksForNode(nodeId);
+      contextText = chunks.join('\n\n');
+      title = `Fiszki z węzła`;
+      sourceType = 'node';
+      sourceId = nodeId;
+    } else if (query) {
+      const embeddingAdapter = new OpenAIEmbeddingAdapter(process.env.OPENAI_API_KEY || '');
+      const embeddingRepo = new EmbeddingRepository(prisma);
+      const nodeRepo = new GraphNodeRepository(prisma);
+      const chunkRepo = new SessionChunkRepository(prisma);
+      const knowledgeService = new KnowledgeQueryService(embeddingAdapter, embeddingRepo, nodeRepo, chunkRepo);
+      const chunks = await knowledgeService.getChunksByQuery(id, query, 10);
+      contextText = chunks.join('\n\n');
+      title = `Fiszki z pytania: ${query.substring(0, 50)}`;
+      sourceType = 'query';
+      sourceId = query;
+    } else {
+      // Fallback to session summary
+      const learningSession = await prisma.learningSession.findUnique({
+        where: { id },
+        select: { summary: true, topic: true },
+      });
+      if (!learningSession?.summary) {
+        return NextResponse.json({ error: 'Session or summary not found' }, { status: 404 });
+      }
+      contextText = learningSession.summary;
+      title = `Fiszki: ${learningSession.topic || 'Sesja'}`;
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    
+    // Generate flashcards with LLM
+    const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
+
     const prompt = `
-      Jesteś ekspertem edukacyjnym. Poniżej znajduje się notatka z lekcji. 
-      Na jej podstawie stwórz od 5 do 10 najważniejszych fiszek (pytanie i krótka odpowiedź) pozwalających utrwalić wiedzę z tej notatki.
+      Jesteś ekspertem edukacyjnym. Poniżej znajduje się materiał edukacyjny. 
+      Na jego podstawie stwórz od 5 do 10 najważniejszych fiszek (pytanie i krótka odpowiedź) pozwalających utrwalić wiedzę.
       
       Zwróć wynik w formacie JSON z kluczem "flashcards", który jest tablicą obiektów z kluczami "question" i "answer".
       
-      Notatka:
-      ${learningSession.summary}
+      Materiał:
+      ${contextText.substring(0, 8000)}
     `;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: 'You are a helpful educational assistant that always outputs valid JSON.' },
-        { role: 'user', content: prompt }
+        { role: 'user', content: prompt },
       ],
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
     });
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
-       throw new Error("No content generated by LLM");
+      throw new Error('No content generated by LLM');
     }
 
-    const parsed = JSON.parse(content);
-    return NextResponse.json(parsed);
+    const parsed_result = JSON.parse(content);
+    const cards = parsed_result.flashcards || [];
+
+    // Save if requested
+    let setId: string | undefined;
+    if (save && cards.length > 0) {
+      const repo = new FlashcardRepository(prisma);
+      setId = await repo.createSet({
+        sessionId: id,
+        title,
+        sourceType,
+        sourceId,
+        cards,
+      });
+    }
+
+    return NextResponse.json({ flashcards: cards, setId, title });
 
   } catch (error: any) {
     console.error('Error generating flashcards:', error);
     return NextResponse.json({ error: 'Failed to generate flashcards' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { id } = await params;
+    const body = await req.json();
+    const setId = body.setId;
+    if (!setId) return NextResponse.json({ error: 'setId required' }, { status: 400 });
+
+    const repo = new FlashcardRepository(prisma);
+    await repo.deleteSet(setId);
+    return NextResponse.json({ ok: true });
+
+  } catch (error: any) {
+    console.error('Error deleting flashcard set:', error);
+    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
   }
 }

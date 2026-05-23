@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const filePath = join(uploadDir, `${Date.now()}_audio.webm`);
     await writeFile(filePath, buffer);
 
-    const openai = new OpenAI({
+    const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
       apiKey: process.env.OPENAI_API_KEY,
     });
 

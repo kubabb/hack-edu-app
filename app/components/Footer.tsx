@@ -19,11 +19,11 @@ export default function Footer() {
   return (
     <footer className="px-4 pb-6 pt-10">
       <div className="cartoon-panel mx-auto max-w-7xl rounded-[32px] px-7 py-10 md:px-12">
-        <div className="grid gap-10 md:grid-cols-[1.15fr_1fr_1fr_1fr_1.15fr]">
+        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr_1.15fr]">
           <div>
-            <a href="#" className="flex items-center gap-2 text-[#06296b]">
-              <span className="font-display text-3xl">TutorAI</span>
-              <GraduationCap className="h-6 w-6 text-[#20b981]" />
+            <a href="#" className="flex flex-wrap items-center gap-2 text-[#06296b] xl:flex-nowrap">
+              <img src="/icon_mascot.svg" alt="nastoprocent Logo" className="h-12 w-auto" />
+              <span className="font-display text-2xl -mt-1.5">nastoprocent</span>
             </a>
             <p className="mt-4 max-w-xs text-sm font-bold leading-6 text-[#6e7fa6]">
               AI korepetytor, który tłumaczy jak człowiek. Nagrania, quizy i
@@ -85,7 +85,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 border-t border-[#e6edf7] pt-6 text-center text-sm font-bold text-[#9aa8c1]">
-          © 2026 TutorAI. Wszystkie prawa zastrzeżone.
+          © 2026 nastoprocent. Wszystkie prawa zastrzeżone.
         </div>
       </div>
     </footer>

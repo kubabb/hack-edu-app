@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     let summaryText = 'Brak wystarczającej interakcji do stworzenia podsumowania.';
 
     if (conversationText.trim().length > 0) {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = createOpenAIClient(process.env.OPENAI_API_KEY || '');
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
@@ -64,7 +64,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       summaryText = completion.choices[0]?.message?.content || summaryText;
     }
 
-    // Zapisz podsumowanie
+    // Zapisujemy podsumowanie — NIE usuwamy chunków, żeby można było generować notatki/fiszki/graf
+    // Aby usunąć dane tymczasowe, wywołaj DELETE /api/sessions/[id]
     await prisma.learningSession.update({
       where: { id: sessionId },
       data: {
@@ -72,14 +73,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         status: 'PROCESSED'
       }
     });
-
-    // Zgodnie z prośbą "aby nie zapisywało tych pdfów/ksiazek":
-    // Usuwamy wektory i tymczasowe dane, ale najpierw odpinamy węzły grafu, żeby ich nie usunąć kaskadowo
-    await prisma.graphNode.updateMany({
-      where: { sessionId },
-      data: { chunkId: null }
-    });
-    await prisma.sessionChunk.deleteMany({ where: { sessionId } });
 
     return NextResponse.json({ success: true, summary: summaryText });
   } catch (error: any) {
