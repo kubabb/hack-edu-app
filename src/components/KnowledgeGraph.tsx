@@ -19,15 +19,31 @@ interface ApiEdge {
   target: string
   type: string
   highlighted?: boolean
+  weight?: number
 }
 
 interface GraphNode extends ApiNode {
   color: string
+  x?: number
+  y?: number
 }
 
 interface GraphData {
   nodes: GraphNode[]
   links: ApiEdge[]
+}
+
+interface GeneratedGraphResponse {
+  graph?: {
+    nodes?: ApiNode[]
+    edges?: ApiEdge[]
+  }
+  error?: string
+}
+
+interface ForceGraphHandle {
+  centerAt: (x?: number, y?: number, ms?: number) => void
+  zoom: (k: number, ms?: number) => void
 }
 
 const typeColors: Record<string, string> = {
@@ -42,6 +58,13 @@ const typeColors: Record<string, string> = {
 }
 
 const allNodeTypes = ['CONCEPT', 'TASK', 'SECTION', 'DEFINITION', 'EXAMPLE', 'THEOREM']
+
+const edgeColors: Record<string, string> = {
+  DEPENDS_ON: '#ff5144',
+  PART_OF: '#20b981',
+  SIMILAR: '#7057ff',
+  NEXT: '#a5b1ca',
+}
 
 function readNodeId(node: unknown) {
   if (typeof node !== 'object' || node === null || !('id' in node)) return null
@@ -64,7 +87,7 @@ export default function KnowledgeGraph({
   const [searchQuery, setSearchQuery] = useState('')
   const [highlightNodeId, setHighlightNodeId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const graphRef = useRef<any>(null)
+  const graphRef = useRef<ForceGraphHandle | null>(null)
   const [dims, setDims] = useState({ width: 800, height: 600 })
   const [showFilters, setShowFilters] = useState(false)
 
@@ -73,19 +96,19 @@ export default function KnowledgeGraph({
     setGenError('')
     try {
       const res = await fetch(`/api/sessions/${bookId}/graph/enrich`, { method: 'POST' })
-      const data = await res.json()
+      const data = await readJsonSafely<GeneratedGraphResponse>(res)
       if (!res.ok) throw new Error(data?.error || 'Błąd generowania')
       if (data.graph) {
-        const nodes: GraphNode[] = (data.graph.nodes || []).map((n: any) => ({
-          ...n,
-          color: typeColors[n.type] || '#6e7fa6',
+        const nodes: GraphNode[] = (data.graph.nodes || []).map((node) => ({
+          ...node,
+          color: typeColors[node.type] || '#6e7fa6',
         }))
         const links = data.graph.edges || []
         setData({ nodes, links })
         setGenError('')
       }
-    } catch (e: any) {
-      setGenError(e.message)
+    } catch (e: unknown) {
+      setGenError(e instanceof Error ? e.message : 'Błąd generowania')
     } finally {
       setGenerating(false)
     }
@@ -140,6 +163,7 @@ export default function KnowledgeGraph({
             target: edge.target,
             type: edge.type,
             highlighted: edge.highlighted,
+            weight: edge.weight,
           })),
         })
       } catch {
@@ -173,7 +197,7 @@ export default function KnowledgeGraph({
     }
   }, [searchQuery, data])
 
-  const handleNodeClick = useCallback((node: any) => {
+  const handleNodeClick = useCallback((node: unknown) => {
     const nodeId = readNodeId(node)
     if (!nodeId) return
 
@@ -238,7 +262,7 @@ export default function KnowledgeGraph({
         </div>
         <p className="font-display text-3xl leading-none text-[#06296b]">Graf wiedzy jest pusty</p>
         <p className="mt-3 max-w-md text-sm font-bold leading-6 text-[#6e7fa6]">
-          Wygeneruj graf wiedzy za pomocą AI, aby zobaczyć pojęcia i ich powiązania.
+          Nie udało się jeszcze zbudować grafu automatycznie. Możesz wymusić ponowną analizę AI, aby zobaczyć pojęcia i ich powiązania.
         </p>
         {genError && (
           <p className="mt-3 rounded-xl bg-[#fff0ef] px-3 py-1 text-sm font-bold text-[#d8342b]">{genError}</p>
@@ -333,6 +357,15 @@ export default function KnowledgeGraph({
         </button>
       </div>
 
+      <div className="absolute bottom-3 left-3 z-10 flex flex-wrap gap-2 rounded-2xl border border-[#dce7f5] bg-white/95 px-3 py-2 shadow-md">
+        {Object.entries(edgeColors).map(([type, color]) => (
+          <div key={type} className="flex items-center gap-2 text-xs font-bold text-[#6e7fa6]">
+            <span className="block h-[3px] w-6 rounded-full" style={{ backgroundColor: color }} />
+            {type}
+          </div>
+        ))}
+      </div>
+
       {/* Type filter panel */}
       {showFilters && (
         <div className="absolute top-14 left-3 z-10 rounded-2xl bg-white shadow-lg border border-[#dce7f5] p-3 flex flex-wrap gap-2 max-w-[300px]">
@@ -368,8 +401,8 @@ export default function KnowledgeGraph({
           graphData={data}
           nodeLabel="label"
           nodeColor="color"
-          linkColor={(link: any) => link.highlighted ? '#ffb84d' : '#dce7f5'}
-          linkWidth={(link: any) => link.highlighted ? 2.5 : 1.4}
+          linkColor={(link: ApiEdge) => link.highlighted ? '#ffb84d' : (edgeColors[link.type] || '#dce7f5')}
+          linkWidth={(link: ApiEdge) => link.highlighted ? 3 : Math.max(1.5, (link.weight || 0.6) * 3)}
           nodeRelSize={7}
           onNodeClick={handleNodeClick}
           width={dims.width}

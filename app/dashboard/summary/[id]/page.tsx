@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { ChevronLeft, FileCheck, Share2, FileText, MessageCircle, Network, Layers } from 'lucide-react'
 import DashboardLayout from '@/src/components/DashboardLayout'
 import Flashcards from '@/src/components/Flashcards'
-import KnowledgeGraph from '@/src/components/KnowledgeGraph'
 import ChatPanel from '@/src/components/ChatPanel'
+import MindMap from '@/src/components/MindMap'
 import { readJsonSafely } from '@/src/lib/http/json'
 
 interface SummaryData {
@@ -149,7 +149,7 @@ export default function SessionSummaryPage({ params }: { params: Promise<{ id: s
                 )}
                 {activeTab === 'map' && (
                   <div className="h-[600px] w-full overflow-hidden rounded-[26px] border border-[#dce7f5]">
-                    <KnowledgeGraph bookId={sessionId} />
+                    <MindMap sessionId={sessionId} />
                   </div>
                 )}
                 {activeTab === 'flashcards' && (

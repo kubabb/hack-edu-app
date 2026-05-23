@@ -3,6 +3,9 @@ import { auth } from '@/auth';
 import { prisma } from '@/src/server/prisma';
 import { GraphNodeRepository } from '@/src/server/repositories/GraphNodeRepository';
 import { GraphEdgeRepository } from '@/src/server/repositories/GraphEdgeRepository';
+import { SessionChunkRepository } from '@/src/server/repositories/SessionChunkRepository';
+import { EmbeddingRepository } from '@/src/server/repositories/EmbeddingRepository';
+import { GraphBuilderService } from '@/src/server/services/GraphBuilderService';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ bookId: string }> }) {
   const session = await auth();
@@ -16,9 +19,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ book
 
   const nodeRepo = new GraphNodeRepository(prisma);
   const edgeRepo = new GraphEdgeRepository(prisma);
+  const chunkRepo = new SessionChunkRepository(prisma);
+  const embeddingRepo = new EmbeddingRepository(prisma);
+  const graphBuilder = new GraphBuilderService(nodeRepo, edgeRepo, chunkRepo, embeddingRepo);
 
   // bookId is actually sessionId (legacy naming)
   const sessionId = bookId;
+
+  const existingNodes = await nodeRepo.findBySessionId(sessionId);
+  if (existingNodes.length === 0) {
+    await graphBuilder.buildGraph(sessionId);
+  }
 
   const [nodes, edges] = await Promise.all([
     nodeRepo.findBySessionId(sessionId, types),
@@ -52,6 +63,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ book
       source: e.sourceId,
       target: e.targetId,
       type: e.type,
+      weight: e.weight,
       highlighted: highlightedNodeIds.includes(e.sourceId) || highlightedNodeIds.includes(e.targetId),
     })),
     highlightedNodeIds,
@@ -62,7 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ boo
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { bookId } = await params;
+  await params;
   const body = await req.json();
   const { nodeId } = body;
 

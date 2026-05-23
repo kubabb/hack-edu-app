@@ -1,16 +1,20 @@
-import { PrismaClient, GraphEdge } from '@prisma/client';
+import { PrismaClient, GraphEdge, Prisma } from '@prisma/client';
 
 export class GraphEdgeRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(data: { sessionId: string; sourceId: string; targetId: string; type: string; weight?: number }): Promise<GraphEdge> {
-    return this.prisma.graphEdge.create({ data: data as any });
+    return this.prisma.graphEdge.create({
+      data: data as Prisma.GraphEdgeUncheckedCreateInput,
+    });
   }
 
   async createMany(edges: { sessionId: string; sourceId: string; targetId: string; type: string; weight?: number }[]): Promise<GraphEdge[]> {
-    const created = [];
+    const created: GraphEdge[] = [];
     for (const e of edges) {
-      created.push(await this.prisma.graphEdge.create({ data: e as any }));
+      created.push(await this.prisma.graphEdge.create({
+        data: e as Prisma.GraphEdgeUncheckedCreateInput,
+      }));
     }
     return created;
   }
@@ -21,5 +25,9 @@ export class GraphEdgeRepository {
 
   async findBySourceId(sourceId: string): Promise<GraphEdge[]> {
     return this.prisma.graphEdge.findMany({ where: { sourceId } });
+  }
+
+  async deleteBySessionId(sessionId: string): Promise<void> {
+    await this.prisma.graphEdge.deleteMany({ where: { sessionId } });
   }
 }
