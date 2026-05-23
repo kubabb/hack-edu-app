@@ -18,15 +18,45 @@ export class TutoringService {
     await this.messageRepo.create({ sessionId, role: 'USER', content: message });
 
     const history = await this.messageRepo.findBySessionId(sessionId);
-    const context = await this.knowledgeQueryService.getContextForQuestion(session.id, message, selectedNodeId);
+    const contextItems = await this.knowledgeQueryService.getHybridContext(
+      session.id,
+      message,
+      selectedNodeId
+    );
+
+    // Build context with source markers
+    const contextBlock = contextItems.length > 0
+      ? contextItems
+          .map((c, i) => `[Fragment ${i + 1}] (Źródło: ${c.source})\n${c.content}`)
+          .join('\n\n---\n\n')
+      : 'Brak dopasowanych fragmentów w materiałach.';
+
+    const systemPrompt = `Jesteś korepetytorem AI. Odpowiadasz po polsku. 
+
+ZASADY:
+1. NIE podawaj od razu pełnej odpowiedzi. Zadawaj pytania pośrednie, aby uczeń sam doszedł do rozwiązania.
+2. Opieraj odpowiedzi TYLKO na dostarczonym kontekście z materiałów (Fragmenty poniżej).
+3. Jeśli kontekst nie zawiera odpowiedzi na pytanie, powiedz: "Nie znalazłem tej informacji w materiałach. Czy mogę pomóc w inny sposób?"
+4. Jeśli powołujesz się na konkretny fragment, zacytuj go lub podaj numer fragmentu.
+5. Bądź cierpliwy i zachęcający, używaj prostego języka.
+
+KONTEKST Z MATERIAŁÓW (${contextItems.length} fragmentów):
+${contextBlock}`;
 
     const prompt: LlmPrompt = {
-      system: `Jesteś korepetytorem AI. Odpowiadasz po polsku. Nie podawaj od razu pełnej odpowiedzi. Zadawaj pytania pośrednie, aby uczeń sam doszedł do rozwiązania.\n\nKontekst z książki:\n${context.join('\n---\n')}`,
-      messages: history.map((m) => ({ role: m.role === 'USER' ? 'user' : 'assistant', content: m.content })),
+      system: systemPrompt,
+      messages: history.map((m) => ({
+        role: m.role === 'USER' ? 'user' as const : 'assistant' as const,
+        content: m.content,
+      })),
     };
 
     const response = await this.llmAdapter.complete(prompt);
-    const assistantMessage = await this.messageRepo.create({ sessionId, role: 'ASSISTANT', content: response.content });
+    const assistantMessage = await this.messageRepo.create({
+      sessionId,
+      role: 'ASSISTANT',
+      content: response.content,
+    });
 
     return { sessionId, assistantMessage };
   }

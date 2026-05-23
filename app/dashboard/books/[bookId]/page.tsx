@@ -1,27 +1,43 @@
 'use client'
 
-import { useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   BookOpen,
   Brain,
   ChevronLeft,
   MessageCircle,
-  PlayCircle,
-  Share2,
   Sparkles,
+  Network,
+  StickyNote,
+  FileText,
 } from 'lucide-react'
 import DashboardLayout from '@/src/components/DashboardLayout'
 import KnowledgeGraph from '@/src/components/KnowledgeGraph'
 import ChatPanel from '@/src/components/ChatPanel'
+import MindMap from '@/src/components/MindMap'
+import Flashcards from '@/src/components/Flashcards'
+import NotesPanel from '@/src/components/NotesPanel'
 
-type DetailTab = 'graph' | 'chat'
+type DetailTab = 'graph' | 'chat' | 'mindmap' | 'flashcards' | 'notes'
+
+const tabs: { id: DetailTab; label: string; icon: any }[] = [
+  { id: 'graph', label: 'Graf wiedzy', icon: Network },
+  { id: 'mindmap', label: 'Mapa myśli', icon: Brain },
+  { id: 'notes', label: 'Notatki AI', icon: FileText },
+  { id: 'flashcards', label: 'Fiszki', icon: StickyNote },
+  { id: 'chat', label: 'Czat z AI', icon: MessageCircle },
+]
 
 export default function BookDetailPage() {
   const params = useParams<{ bookId: string }>()
+  const searchParams = useSearchParams()
   const bookId = params.bookId
-  const [activeTab, setActiveTab] = useState<DetailTab>('graph')
+  const tabParam = searchParams.get('tab') as DetailTab | null
+  const [activeTab, setActiveTab] = useState<DetailTab>(
+    tabParam && tabs.some(t => t.id === tabParam) ? tabParam : 'graph'
+  )
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   return (
@@ -49,91 +65,102 @@ export default function BookDetailPage() {
                 Studio nauki
               </h1>
               <p className="mt-4 max-w-2xl text-base font-bold leading-7 text-[#6e7fa6]">
-                Przeglądaj graf wiedzy, klikaj pojęcia i rozmawiaj z AI korepetytorem o
-                konkretnych fragmentach materiału.
+                Przeglądaj graf wiedzy, mapę myśli, notatki AI, fiszki i rozmawiaj z korepetytorem.
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-3 rounded-2xl border border-[#dce7f5] bg-white px-5 py-4 font-extrabold text-[#06296b]"
-          >
-            <Share2 className="h-5 w-5" strokeWidth={2.7} />
-            Udostępnij
-          </button>
         </div>
       </section>
 
+      {/* Feature cards */}
       <section className="mt-5 grid gap-4 md:grid-cols-3">
         {[
           {
             title: 'Graf wiedzy',
-            text: 'Mapa pojęć i zależności z pliku.',
-            icon: Brain,
+            text: 'Mapa pojęć i zależności.',
+            icon: Network,
             color: 'bg-[#7057ff]',
+            tab: 'graph' as DetailTab,
           },
           {
-            title: 'Czat kontekstowy',
-            text: 'Pytaj o fragmenty i trudne tematy.',
-            icon: MessageCircle,
+            title: 'Notatki AI',
+            text: 'Automatyczne notatki z materiału.',
+            icon: FileText,
             color: 'bg-[#20b981]',
+            tab: 'notes' as DetailTab,
           },
           {
-            title: 'Nagrania AI',
-            text: 'Tu pojawią się wyjaśnienia korepetytorów.',
-            icon: PlayCircle,
-            color: 'bg-[#ff5144]',
+            title: 'Mapa myśli',
+            text: 'Hierarchiczna struktura dokumentu.',
+            icon: Brain,
+            color: 'bg-[#ffb84d]',
+            tab: 'mindmap' as DetailTab,
           },
         ].map((item) => {
           const Icon = item.icon
           return (
-            <article key={item.title} className="cartoon-panel rounded-[28px] p-5">
+            <button
+              key={item.title}
+              onClick={() => setActiveTab(item.tab)}
+              className="cartoon-panel rounded-[28px] p-5 text-left transition-transform hover:-translate-y-1"
+            >
               <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-white ${item.color}`}>
                 <Icon className="h-6 w-6" strokeWidth={2.7} />
               </div>
               <h2 className="text-lg font-extrabold text-[#06296b]">{item.title}</h2>
               <p className="mt-2 text-sm font-bold leading-6 text-[#6e7fa6]">{item.text}</p>
-            </article>
+            </button>
           )
         })}
       </section>
 
+      {/* Tab bar */}
       <section className="mt-7">
-        <div className="cartoon-panel mb-5 flex w-fit gap-1 rounded-2xl p-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('graph')}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-extrabold transition-colors ${
-              activeTab === 'graph' ? 'bg-[#7057ff] text-white' : 'text-[#6e7fa6] hover:text-[#06296b]'
-            }`}
-          >
-            <Brain className="h-4 w-4" strokeWidth={2.7} />
-            Graf wiedzy
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('chat')}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-extrabold transition-colors ${
-              activeTab === 'chat' ? 'bg-[#7057ff] text-white' : 'text-[#6e7fa6] hover:text-[#06296b]'
-            }`}
-          >
-            <MessageCircle className="h-4 w-4" strokeWidth={2.7} />
-            Czat z AI
-          </button>
+        <div className="cartoon-panel mb-5 flex flex-wrap gap-1 rounded-2xl p-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-extrabold transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-[#7057ff] text-white'
+                    : 'text-[#6e7fa6] hover:text-[#06296b]'
+                }`}
+              >
+                <Icon className="h-4 w-4" strokeWidth={2.7} />
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
 
-        {activeTab === 'graph' ? (
-          <div className="cartoon-panel rounded-[32px] p-3 md:p-5">
+        {/* Tab content */}
+        <div className="cartoon-panel rounded-[32px] p-3 md:p-5">
+          {activeTab === 'graph' && (
             <div className="h-[520px] overflow-hidden rounded-[26px] bg-white md:h-[640px]">
               <KnowledgeGraph bookId={bookId} onSelectNode={setSelectedNodeId} />
             </div>
-          </div>
-        ) : (
-          <div className="cartoon-panel rounded-[32px] p-3 md:p-5">
+          )}
+
+          {activeTab === 'chat' && (
             <ChatPanel bookId={bookId} selectedNodeId={selectedNodeId} />
-          </div>
-        )}
+          )}
+
+          {activeTab === 'mindmap' && (
+            <MindMap sessionId={bookId} />
+          )}
+
+          {activeTab === 'flashcards' && (
+            <Flashcards sessionId={bookId} />
+          )}
+
+          {activeTab === 'notes' && (
+            <NotesPanel sessionId={bookId} />
+          )}
+        </div>
       </section>
     </DashboardLayout>
   )

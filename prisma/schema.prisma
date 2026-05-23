@@ -68,6 +68,8 @@ model LearningSession {
   nodes     GraphNode[]
   edges     GraphEdge[]
   messages  ChatMessage[]
+  flashcardSets FlashcardSet[]
+  mindMapNodes  MindMapNode[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 }
@@ -81,6 +83,7 @@ model SessionChunk {
   position  Int
   embedding Embedding?
   graphNodes GraphNode[]
+  mindMapNodes MindMapNode[]
   createdAt DateTime        @default(now())
 }
 
@@ -88,7 +91,7 @@ model Embedding {
   id        String       @id @default(cuid())
   chunkId   String       @unique
   chunk     SessionChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
-  vector    Bytes
+  vector    Unsupported("vector(1536)")
   provider  String       @default("openai")
   createdAt DateTime     @default(now())
 }
@@ -130,4 +133,40 @@ model ChatMessage {
   content        String          @db.Text
   createdAt      DateTime        @default(now())
   avatarVideoUrl String?
+}
+
+model FlashcardSet {
+  id          String          @id @default(cuid())
+  sessionId   String
+  session     LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title       String
+  sourceType  String          // "summary" | "node" | "query"
+  sourceId    String?         // nodeId lub query
+  cards       Flashcard[]
+  createdAt   DateTime        @default(now())
+}
+
+model Flashcard {
+  id        String       @id @default(cuid())
+  setId     String
+  set       FlashcardSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  question  String
+  answer    String
+  position  Int
+  createdAt DateTime     @default(now())
+}
+
+model MindMapNode {
+  id        String          @id @default(cuid())
+  sessionId String
+  session   LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  label     String
+  type      String          // "root" | "chapter" | "section" | "concept" | "task"
+  parentId  String?
+  parent    MindMapNode?    @relation("MindMapHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  MindMapNode[]   @relation("MindMapHierarchy")
+  chunkId   String?
+  chunk     SessionChunk?   @relation(fields: [chunkId], references: [id], onDelete: SetNull)
+  position  Int
+  createdAt DateTime        @default(now())
 }
