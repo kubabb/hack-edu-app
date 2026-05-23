@@ -14,13 +14,11 @@ export class EmbeddingService {
     if (chunks.length === 0) return;
     const texts = chunks.map((c) => c.content);
     const embeddings = await this.embeddingAdapter.embed(texts);
-    const vectors = embeddings.map((emb) => Buffer.from(new Float32Array(emb).buffer));
-    await this.embeddingRepo.batchCreate(
-      chunks.map((chunk, i) => ({
-        chunkId: chunk.id,
-        vector: vectors[i],
-        provider: 'openai',
-      }))
-    );
+    const items = chunks.map((chunk, i) => ({
+      chunkId: chunk.id,
+      vector: new Float32Array(embeddings[i]),
+      provider: 'openai' as const,
+    }));
+    await this.embeddingRepo.batchCreate(items);
   }
 }

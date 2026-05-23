@@ -15,8 +15,12 @@ export class GraphNodeRepository {
     return created;
   }
 
-  async findBySessionId(sessionId: string): Promise<GraphNode[]> {
-    return this.prisma.graphNode.findMany({ where: { sessionId } });
+  async findBySessionId(sessionId: string, types?: string[]): Promise<GraphNode[]> {
+    const where: any = { sessionId };
+    if (types && types.length > 0) {
+      where.type = { in: types };
+    }
+    return this.prisma.graphNode.findMany({ where });
   }
 
   async findByIdWithNeighbors(id: string): Promise<GraphNode & { outgoing: (GraphNode & { target: GraphNode })[]; incoming: (GraphNode & { source: GraphNode })[]; chunk: { content: string } | null }> {
@@ -30,5 +34,52 @@ export class GraphNodeRepository {
     });
     if (!node) throw new Error('Node not found');
     return node as any;
+  }
+
+  /** Find all nodes reachable from a node via edge types (BFS, limited depth) */
+  async findReachableNodes(nodeId: string, edgeTypes: string[] = ['DEPENDS_ON', 'NEXT'], maxDepth: number = 3): Promise<string[]> {
+    const visited = new Set<string>();
+    const result: string[] = [];
+    let frontier = [nodeId];
+    visited.add(nodeId);
+
+    for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
+      const nextFrontier: string[] = [];
+      const frontierStr = frontier.map(id => `'${id}'`).join(',');
+
+      if (!frontierStr) break;
+
+      // Find outgoing edges
+      const outgoing = await this.prisma.$queryRawUnsafe<Array<{ targetId: string }>>(
+        `SELECT "targetId" FROM "GraphEdge" WHERE "sourceId" IN (${frontierStr}) AND "type" = ANY($1)`,
+        edgeTypes
+      );
+
+      for (const row of outgoing) {
+        if (!visited.has(row.targetId)) {
+          visited.add(row.targetId);
+          result.push(row.targetId);
+          nextFrontier.push(row.targetId);
+        }
+      }
+
+      // Find incoming edges
+      const incoming = await this.prisma.$queryRawUnsafe<Array<{ sourceId: string }>>(
+        `SELECT "sourceId" FROM "GraphEdge" WHERE "targetId" IN (${frontierStr}) AND "type" = ANY($1)`,
+        edgeTypes
+      );
+
+      for (const row of incoming) {
+        if (!visited.has(row.sourceId)) {
+          visited.add(row.sourceId);
+          result.push(row.sourceId);
+          nextFrontier.push(row.sourceId);
+        }
+      }
+
+      frontier = nextFrontier;
+    }
+
+    return result;
   }
 }

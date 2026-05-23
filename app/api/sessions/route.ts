@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const edgeRepo = new GraphEdgeRepository(prisma);
     const graphBuilderService = new GraphBuilderService(nodeRepo, edgeRepo, chunkRepo, embeddingRepo);
 
-    const ingestionService = new SessionIngestionService(sessionRepo, ocrAdapter, chunkingService, embeddingService, graphBuilderService);
+    const ingestionService = new SessionIngestionService(prisma, sessionRepo, ocrAdapter, chunkingService, embeddingService, graphBuilderService, chunkRepo);
 
     const learningSession = await ingestionService.createSession((session.user as any).id, topic);
     
