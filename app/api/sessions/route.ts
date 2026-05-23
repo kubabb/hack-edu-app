@@ -20,6 +20,11 @@ import { join } from 'path';
 import { mkdir } from 'fs/promises';
 import { fetchYouTubeTranscript } from '@/src/server/lib/youtube';
 
+export const runtime = 'nodejs';
+export const maxDuration = 120;
+
+const SUPPORTED_EXTENSIONS = new Set(['pdf', 'md', 'txt']);
+
 function getAuthenticatedUserId(session: Awaited<ReturnType<typeof auth>>) {
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) {
@@ -38,6 +43,15 @@ function getErrorStack(error: unknown) {
   return undefined;
 }
 
+function getFileExtension(name: string) {
+  return name.split('.').pop()?.toLowerCase() || '';
+}
+
+function isSupportedUpload(file: File) {
+  const extension = getFileExtension(file.name);
+  return Boolean(extension) && SUPPORTED_EXTENSIONS.has(extension) && !file.name.startsWith('.');
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -45,12 +59,21 @@ export async function POST(req: NextRequest) {
     const userId = getAuthenticatedUserId(session);
 
     const formData = await req.formData();
-    const files = formData.getAll('file') as File[];
+    const uploadedFiles = formData.getAll('file') as File[];
+    const files = uploadedFiles
+      .filter(isSupportedUpload)
+      .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
     const topic = (formData.get('title') as string) || 'Brak tematu';
     const mode = (formData.get('mode') as string) || 'chat';
     const youtubeUrl = (formData.get('youtubeUrl') as string | null)?.trim() || '';
 
     const sessionRepo = new LearningSessionRepository(prisma);
+
+    if (uploadedFiles.length > 0 && files.length === 0 && !youtubeUrl) {
+      return NextResponse.json({
+        error: 'Wybrany folder nie zawiera obsługiwanych plików. Dodaj PDF, MD albo TXT.',
+      }, { status: 400 });
+    }
 
     if (files.length === 0 && !youtubeUrl) {
       const learningSession = await sessionRepo.create({ userId, topic, status: 'PROCESSED' });
@@ -81,7 +104,7 @@ export async function POST(req: NextRequest) {
     await mkdir(uploadDir, { recursive: true });
     
     let allText = '';
-    const filePaths: string[] = [];
+    const diskBackedFilePaths: string[] = [];
 
     if (youtubeUrl) {
       const transcriptData = await fetchYouTubeTranscript(youtubeUrl);
@@ -103,26 +126,23 @@ export async function POST(req: NextRequest) {
     }
     
     for (const file of files) {
-      // Skip non-content files from folders
-      const fname = file.name.toLowerCase();
-      const ext = fname.split('.').pop();
-      if (!ext || !['pdf', 'md', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
-        continue; // skip .gitignore, .env, etc.
-      }
-
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      
-      // file.name may contain paths like "folder/sub/file.md" from webkitdirectory
-      const safeName = file.name.replace(/[<>:"/\\|?*]/g, '_');
-      const filePath = join(uploadDir, `${Date.now()}_${safeName}`);
-      
-      // Ensure parent directories exist
-      await mkdir(join(filePath, '..'), { recursive: true });
-      await writeFile(filePath, buffer);
-      filePaths.push(filePath);
-
       try {
+        const ext = getFileExtension(file.name);
+        if (ext === 'md' || ext === 'txt') {
+          const fileText = (await file.text()).trim();
+          if (fileText) {
+            allText += (allText ? '\n\n---\n\n' : '') + fileText;
+          }
+          continue;
+        }
+
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const safeName = file.name.replace(/[<>:"/\\|?*]/g, '_');
+        const filePath = join(uploadDir, `${Date.now()}_${safeName}`);
+        await writeFile(filePath, buffer);
+        diskBackedFilePaths.push(filePath);
+
         const adapter = getAdapter(file.name);
         const pages = await adapter.extractPages(filePath);
         const fileText = pages.map(p => p.text).join('\n\n');
@@ -135,8 +155,15 @@ export async function POST(req: NextRequest) {
     }
 
     if (!allText.trim()) {
+      if (diskBackedFilePaths.length === 0) {
+        return NextResponse.json({
+          error: 'Nie udało się odczytać treści z wybranego folderu. Dodaj pliki PDF, MD lub TXT z tekstem.',
+        }, { status: 400 });
+      }
+
       // Fallback: try processing first file directly through the pipeline
-      const ocrAdapter = getAdapter(files[0].name);
+      const firstSupportedDiskFile = files.find((file) => getFileExtension(file.name) === 'pdf');
+      const ocrAdapter = getAdapter(firstSupportedDiskFile?.name || files[0].name);
       const ingestionService = new SessionIngestionService(
         prisma, sessionRepo, ocrAdapter,
         chunkingService, embeddingService, graphBuilderService, chunkRepo,
@@ -146,7 +173,7 @@ export async function POST(req: NextRequest) {
       try {
         const fallbackPath = youtubeUrl
           ? await writeCombinedFallback(uploadDir, allText)
-          : filePaths[0];
+          : diskBackedFilePaths[0];
 
         await ingestionService.processSessionFile(learningSession.id, fallbackPath);
       } catch (err: unknown) {

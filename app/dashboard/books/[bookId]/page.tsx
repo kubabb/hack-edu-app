@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import type { LucideIcon } from 'lucide-react'
 import {
   BookOpen,
   Brain,
@@ -19,10 +20,11 @@ import ChatPanel from '@/src/components/ChatPanel'
 import MindMap from '@/src/components/MindMap'
 import Flashcards from '@/src/components/Flashcards'
 import NotesPanel from '@/src/components/NotesPanel'
+import { readJsonSafely } from '@/src/lib/http/json'
 
 type DetailTab = 'graph' | 'chat' | 'mindmap' | 'flashcards' | 'notes'
 
-const tabs: { id: DetailTab; label: string; icon: any }[] = [
+const tabs: { id: DetailTab; label: string; icon: LucideIcon }[] = [
   { id: 'graph', label: 'Graf wiedzy', icon: Network },
   { id: 'mindmap', label: 'Mapa myśli', icon: Brain },
   { id: 'notes', label: 'Notatki AI', icon: FileText },
@@ -39,6 +41,66 @@ export default function BookDetailPage() {
     tabParam && tabs.some(t => t.id === tabParam) ? tabParam : 'graph'
   )
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedNodeDetails, setSelectedNodeDetails] = useState<{
+    id: string
+    label: string
+    type: string
+    content: string
+    related: Array<{ id: string; label: string; relation: string; direction: 'incoming' | 'outgoing' }>
+  } | null>(null)
+  const [selectedNodeLoading, setSelectedNodeLoading] = useState(false)
+  const [selectedNodeError, setSelectedNodeError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadNodeDetails() {
+      if (!selectedNodeId) {
+        setSelectedNodeDetails(null)
+        setSelectedNodeError('')
+        return
+      }
+
+      try {
+        setSelectedNodeLoading(true)
+        setSelectedNodeError('')
+        const res = await fetch(`/api/books/${bookId}/graph/node/${selectedNodeId}`)
+        const data = await readJsonSafely<{
+          error?: string
+          node?: {
+            id: string
+            label: string
+            type: string
+            content: string
+            related: Array<{ id: string; label: string; relation: string; direction: 'incoming' | 'outgoing' }>
+          }
+        }>(res)
+
+        if (!res.ok) {
+          throw new Error(data?.error || 'Nie udało się pobrać treści węzła.')
+        }
+
+        if (!cancelled) {
+          setSelectedNodeDetails(data?.node || null)
+        }
+      } catch (error: unknown) {
+        if (!cancelled) {
+          setSelectedNodeDetails(null)
+          setSelectedNodeError(error instanceof Error ? error.message : 'Nie udało się pobrać treści węzła.')
+        }
+      } finally {
+        if (!cancelled) {
+          setSelectedNodeLoading(false)
+        }
+      }
+    }
+
+    void loadNodeDetails()
+
+    return () => {
+      cancelled = true
+    }
+  }, [bookId, selectedNodeId])
 
   return (
     <DashboardLayout>
@@ -140,8 +202,70 @@ export default function BookDetailPage() {
         {/* Tab content */}
         <div className="cartoon-panel rounded-[32px] p-3 md:p-5">
           {activeTab === 'graph' && (
-            <div className="h-[520px] overflow-hidden rounded-[26px] bg-white md:h-[640px]">
-              <KnowledgeGraph bookId={bookId} onSelectNode={setSelectedNodeId} />
+            <div className="grid gap-4">
+              <div className="h-[520px] overflow-hidden rounded-[26px] bg-white md:h-[640px]">
+                <KnowledgeGraph bookId={bookId} onSelectNode={setSelectedNodeId} />
+              </div>
+
+              <div className="rounded-[26px] border border-[#dce7f5] bg-white p-5 md:p-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="font-display text-3xl leading-none text-[#06296b]">Treść wybranego węzła</h3>
+                  {selectedNodeDetails && (
+                    <span className="rounded-full border border-[#f0edff] bg-[#f6f4ff] px-3 py-1 text-xs font-extrabold text-[#7057ff]">
+                      {selectedNodeDetails.type}
+                    </span>
+                  )}
+                </div>
+
+                {!selectedNodeId && (
+                  <p className="mt-4 text-sm font-bold leading-6 text-[#6e7fa6]">
+                    Kliknij pojęcie w grafie, a pod spodem pokażę fragment materiału powiązany z tym węzłem.
+                  </p>
+                )}
+
+                {selectedNodeLoading && (
+                  <p className="mt-4 text-sm font-bold text-[#6e7fa6]">Ładuję treść wybranego węzła...</p>
+                )}
+
+                {selectedNodeError && (
+                  <p className="mt-4 rounded-2xl border border-[#ffd3cf] bg-[#fff0ef] px-4 py-3 text-sm font-bold text-[#d8342b]">
+                    {selectedNodeError}
+                  </p>
+                )}
+
+                {selectedNodeDetails && !selectedNodeLoading && (
+                  <div className="mt-5 grid gap-5">
+                    <div>
+                      <p className="text-lg font-extrabold text-[#06296b]">{selectedNodeDetails.label}</p>
+                      <div className="mt-3 rounded-[22px] bg-[#fffefb] p-4">
+                        <p className="whitespace-pre-wrap text-sm font-bold leading-7 text-[#33456b]">
+                          {selectedNodeDetails.content || 'Ten węzeł nie ma jeszcze przypisanego fragmentu źródłowego.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedNodeDetails.related.length > 0 && (
+                      <div>
+                        <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-[#6e7fa6]">
+                          Powiązania
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {selectedNodeDetails.related.map((item) => (
+                            <button
+                              key={`${item.direction}-${item.id}-${item.relation}`}
+                              type="button"
+                              onClick={() => setSelectedNodeId(item.id)}
+                              className="rounded-2xl border border-[#dce7f5] bg-[#fffefb] px-3 py-2 text-left text-xs font-bold text-[#06296b] transition-colors hover:border-[#7057ff] hover:bg-[#f6f4ff]"
+                            >
+                              {item.label} • {item.relation}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

@@ -166,8 +166,11 @@ export default function KnowledgeGraph({
             weight: edge.weight,
           })),
         })
+        setGenError('')
       } catch {
-        if (!cancelled) setData({ nodes: [], links: [] })
+        if (!cancelled) {
+          setGenError('Nie udało się podświetlić ścieżki dla tego węzła, ale sam graf nadal jest dostępny.')
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }

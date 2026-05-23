@@ -18,9 +18,17 @@ type UploadedFile = File & {
   webkitRelativePath?: string
 }
 
+const SUPPORTED_EXTENSIONS = ['pdf', 'md', 'txt']
+const MAX_FOLDER_FILES = 60
+const MAX_TOTAL_SIZE_BYTES = 30 * 1024 * 1024
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message
   return 'Nie udało się wystartować sesji'
+}
+
+function getExtension(name: string) {
+  return name.split('.').pop()?.toLowerCase() || ''
 }
 
 export default function StartSessionForm({
@@ -40,12 +48,49 @@ export default function StartSessionForm({
   const pickFiles = useCallback(
     (newFiles: FileList | File[]) => {
       const arr = Array.from(newFiles) as UploadedFile[]
-      setFiles(arr)
-      if (!topic && arr.length > 0) {
+      const filtered = arr
+        .filter((file) => {
+          const ext = getExtension(file.name)
+          const isHidden = file.name.startsWith('.')
+          return !isHidden && SUPPORTED_EXTENSIONS.includes(ext)
+        })
+        .sort((a, b) => {
+          const aPath = a.webkitRelativePath || a.name
+          const bPath = b.webkitRelativePath || b.name
+          return aPath.localeCompare(bPath, 'pl')
+        })
+
+      if (filtered.length === 0) {
+        setFiles([])
+        setError('W folderze nie znaleziono obsługiwanych plików. Dodaj `PDF`, `MD` albo `TXT`.')
+        return
+      }
+
+      if (filtered.length > MAX_FOLDER_FILES) {
+        setFiles([])
+        setError(`Folder jest za duży. Wybierz maksymalnie ${MAX_FOLDER_FILES} plików PDF, MD lub TXT.`)
+        return
+      }
+
+      const totalBytes = filtered.reduce((sum, file) => sum + file.size, 0)
+      if (totalBytes > MAX_TOTAL_SIZE_BYTES) {
+        setFiles([])
+        setError('Wybrany folder jest za ciężki. Limit to 30 MB dla jednego importu.')
+        return
+      }
+
+      setError('')
+      const skippedCount = arr.length - filtered.length
+      if (skippedCount > 0) {
+        setError(`Pominąłem ${skippedCount} nieobsługiwanych plików. Importuję tylko PDF, MD i TXT.`)
+      }
+
+      const firstAccepted = filtered[0]
+      if (!topic && firstAccepted) {
         // Use first file name or folder name as topic
-        const firstName = arr[0].name.replace(/\.[^/.]+$/, '')
+        const firstName = firstAccepted.name.replace(/\.[^/.]+$/, '')
         // If it's a folder upload, use directory name
-        const relativePath = arr[0].webkitRelativePath
+        const relativePath = firstAccepted.webkitRelativePath
         if (relativePath) {
           const dirName = relativePath.split('/')[0]
           setTopic(dirName)
@@ -53,6 +98,8 @@ export default function StartSessionForm({
           setTopic(firstName)
         }
       }
+
+      setFiles(filtered)
     },
     [topic],
   )
@@ -261,7 +308,7 @@ export default function StartSessionForm({
                 </span>
                 <input
                   type="file"
-                  accept=".pdf,.md,.txt,image/*"
+                  accept=".pdf,.md,.txt"
                   multiple
                   onChange={handleFileChange}
                   className="hidden"
@@ -277,6 +324,7 @@ export default function StartSessionForm({
                 <input
                   {...directoryPickerAttributes}
                   type="file"
+                  accept=".pdf,.md,.txt"
                   multiple
                   onChange={handleFileChange}
                   className="hidden"
